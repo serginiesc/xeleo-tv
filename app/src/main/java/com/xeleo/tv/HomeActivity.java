@@ -544,6 +544,10 @@ public class HomeActivity extends Activity {
             myGame = mine;
             nextGame = next;
             sports.show(today, Sports.teamAbbr(this), Sports.teamColor(this));
+            // The screen is 540 dp tall: with the "Hoy" row, the team logo and the player there is no room left for
+            // Recientes, so they step aside while the row shows (the score matters more on game day).
+            recentsRow.setVisibility(sports.getVisibility() == View.VISIBLE ? View.GONE
+                    : recentsRow.getChildCount() > 0 ? View.VISIBLE : View.GONE);
             boolean gameDay = mine != null;
             teamLogo.setVisibility(gameDay ? View.VISIBLE : View.GONE);
             teamTint.setVisibility(gameDay ? View.VISIBLE : View.GONE);
@@ -676,7 +680,7 @@ public class HomeActivity extends Activity {
             recentsRow.setVisibility(View.GONE);
             return;
         }
-        recentsRow.setVisibility(View.VISIBLE);
+        recentsRow.setVisibility(sports.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
         TextView label = text(13, TEXT_DIM, medium);
         label.setText("Recientes");
         label.setLetterSpacing(0.08f);
