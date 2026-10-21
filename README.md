@@ -70,3 +70,7 @@ sea suya (`adb shell dumpsys wifi | grep -o 'cname=[^ ]*'`): si lo es, olvida la
   accesibilidad (botón Inicio largo, temporizador, reinicio y recientes); `install.sh` los activa.
 - Fuente: [Outfit](https://github.com/Outfitio/Outfit-Fonts), licencia SIL OFL 1.1 (`docs/licencias/OFL-Outfit.txt`).
   Íconos: Material Icons de Google (Apache 2.0).
+
+## Licencia
+
+[MIT](LICENSE) © 2026 Sergio Escobedo. La fuente Outfit conserva su propia licencia (SIL OFL 1.1).
