@@ -196,9 +196,15 @@ final class GameStats {
         }
     }
 
-    /** "19 CAR, 128 YDS, 2 TD" → "19 acarreos · 128 yds · 2 TD"; a bare number gets the category: "22 puntos". */
+    /**
+     * "19 CAR, 128 YDS, 2 TD" → "19 acarreos · 128 yds · 2 TD"; "Matches: 3, Goals: 5" (season leaders, before a
+     * soccer game) → "3 partidos · 5 goles"; a bare number gets the category: "22 puntos".
+     */
     private static String line(String v, String category) {
         if (v.matches("[0-9.]+")) return v + " " + category.toLowerCase(ES);
+        String[][] words = {{"Matches", "partidos"}, {"Goals", "goles"}, {"Assists", "asistencias"},
+                {"Shots", "tiros"}, {"Saves", "atajadas"}, {"Points", "puntos"}, {"Rebounds", "rebotes"}};
+        for (String[] w : words) v = v.replaceAll(w[0] + ":\\s*([0-9.]+)", "$1 " + w[1]);
         return v.replace(" YDS", " yds").replace(" CAR", " acarreos").replace(" REC", " recepciones")
                 .replace(", ", "  ·  ");
     }
@@ -322,8 +328,8 @@ final class GameStats {
         g.heads = soccer ? new String[]{"PJ", "Dif", "Pts"} : new String[]{"G-P", "Dif", "Racha"};
         Map<String, Sports.Team> teams = teams(path, league);
         int at = group.ids.indexOf(focus), n = group.ids.size();
-        int from = Math.max(0, Math.min(at - 2, n - 6));
-        for (int k = from; k < Math.min(n, from + 6); k++) {
+        int from = Math.max(0, Math.min(at - 2, n - 5));   // five rows fit the panel
+        for (int k = from; k < Math.min(n, from + 5); k++) {
             Map<String, String> v = group.stats.get(k);
             Standing r = new Standing();
             r.id = group.ids.get(k);
