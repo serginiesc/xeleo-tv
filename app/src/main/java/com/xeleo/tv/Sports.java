@@ -1,6 +1,7 @@
 package com.xeleo.tv;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Handler;
@@ -77,6 +78,8 @@ final class Sports {
 
     static final class Game {
         String id, leagueKey, sport, state = "pre", detail = "", broadcast = "";
+        /** ESPN's path for the competition ("football/nfl"), for the game's summary. */
+        String path = "";
         long start;
         Team home = new Team(), away = new Team();
 
@@ -257,6 +260,7 @@ final class Sports {
                 for (int i = 0; i < events.length(); i++) {
                     Game g = parse(events.getJSONObject(i), l);
                     if (g == null || !sameDay(g.start, now)) continue;
+                    g.path = path;
                     if (l.key.equals("selecciones") && !NATIONS.contains(g.home.abbr) && !NATIONS.contains(g.away.abbr)) continue;
                     games.add(g);
                 }
@@ -300,6 +304,7 @@ final class Sports {
             Game g = new Game();
             g.id = e.optString("id");
             g.leagueKey = l.key;
+            g.path = l.paths[0];
             g.sport = l.sport;
             g.start = parseDate(e.getString("date"));
             JSONObject comp = e.getJSONArray("competitions").getJSONObject(0);
@@ -339,7 +344,7 @@ final class Sports {
     }
 
     /** The game's state in Spanish: kickoff time, period and clock, or how it ended. */
-    private static String detail(String sport, Game g, JSONObject status, JSONObject type) {
+    static String detail(String sport, Game g, JSONObject status, JSONObject type) {
         String name = type.optString("name");
         if (name.contains("POSTPONED")) return "Pospuesto";
         if (name.contains("CANCELED")) return "Cancelado";
@@ -391,6 +396,27 @@ final class Sports {
         SimpleDateFormat f = new SimpleDateFormat(s.length() > 16 ? "yyyy-MM-dd'T'HH:mm:ss" : "yyyy-MM-dd'T'HH:mm", Locale.ROOT);
         f.setTimeZone(TimeZone.getTimeZone("UTC"));
         return f.parse(s).getTime();
+    }
+
+    /** The TV app that carries a broadcast ("Prime Video" → Prime Video), if it is installed; else null. */
+    static Intent broadcastApp(Context c, String broadcast) {
+        String b = broadcast == null ? "" : broadcast.toLowerCase(Locale.ROOT);
+        String[][] map = {
+                {"prime", "com.amazon.amazonvideo.livingroom"},
+                {"espn", "com.disney.disneyplus"},
+                {"disney", "com.disney.disneyplus"},
+                {"youtube", "com.google.android.youtube.tv"},
+                {"netflix", "com.netflix.ninja"},
+                {"peacock", "com.peacocktv.peacockandroid"},
+                {"paramount", "com.cbs.ca"},
+                {"max", "com.wbd.stream"},
+        };
+        for (String[] m : map) {
+            if (!b.contains(m[0])) continue;
+            Intent i = c.getPackageManager().getLeanbackLaunchIntentForPackage(m[1]);
+            if (i != null) return i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+        return null;
     }
 
     private static int color(String hex, int fallback) {

@@ -16,8 +16,8 @@ import java.util.List;
 
 /**
  * Home's "Hoy" row: a glass chip per game today, with both logos, the score (or kickoff time) and the state. Your
- * team's game comes first with a frame in its colour. A chip opens the app that carries the game, when it's one
- * of the TV's apps (Prime Video, Disney+ for ESPN, YouTube...).
+ * team's game comes first with a frame in its colour; on days it doesn't play, a chip for it leads the row. OK on
+ * a chip opens the game panel (GameActivity), which has the button to watch it in its app.
  */
 final class SportsStripView extends HorizontalScrollView {
 
@@ -58,10 +58,31 @@ final class SportsStripView extends HorizontalScrollView {
         title.setShadowLayer(dp(6), 0, 0, 0x80000000);
         title.setPadding(0, 0, dp(10), 0);
         row.addView(title);
-        int n = 0;
+        // What the game panel can page through with ◀ ▶: your team's chip (when it doesn't play today) and the games.
+        boolean myTeamPlays = false;
+        for (Sports.Game g : games) if (!myAbbr.isEmpty() && g.side(myAbbr) != null) myTeamPlays = true;
+        boolean teamChip = !myAbbr.isEmpty() && !myTeamPlays;
+        int count = Math.min(games.size(), 12) + (teamChip ? 1 : 0);
+        String[] ids = new String[count], paths = new String[count], leagues = new String[count], casts = new String[count];
+        int k = 0;
+        if (teamChip) {
+            ids[0] = "";
+            paths[0] = "";
+            leagues[0] = Sports.teamLeague(getContext());
+            casts[0] = "";
+            k = 1;
+            row.addView(teamChip(myColor, ids, paths, leagues, casts));
+        }
         for (Sports.Game g : games) {
-            if (n++ == 12) break;
-            row.addView(chip(g, !myAbbr.isEmpty() && g.side(myAbbr) != null, myColor));
+            if (k == count) break;
+            ids[k] = g.id;
+            paths[k] = g.path;
+            leagues[k] = g.leagueKey;
+            casts[k] = g.broadcast;
+            int at = k++;
+            View chip = chip(g, !myAbbr.isEmpty() && g.side(myAbbr) != null, myColor);
+            chip.setOnClickListener(v -> GameActivity.open(getContext(), ids, paths, leagues, casts, at));
+            row.addView(chip);
         }
         // Centre the row when it is narrower than the screen.
         post(() -> {
@@ -101,7 +122,40 @@ final class SportsStripView extends HorizontalScrollView {
             style(c, score, state, mine, myColor, f, g.live());
             v.animate().scaleX(f ? 1.06f : 1f).scaleY(f ? 1.06f : 1f).setDuration(120).start();
         });
-        c.setOnClickListener(v -> openBroadcast(g.broadcast));
+        return c;
+    }
+
+    /** Your team when it doesn't play today: opens the panel on its last game and its standings. */
+    private View teamChip(int myColor, String[] ids, String[] paths, String[] leagues, String[] casts) {
+        LinearLayout c = new LinearLayout(getContext());
+        c.setGravity(Gravity.CENTER_VERTICAL);
+        c.setPadding(dp(10), 0, dp(14), 0);
+        c.setFocusable(true);
+        c.setClickable(true);
+        ImageView iv = new ImageView(getContext());
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        Logos.into(iv, Sports.teamLogo(getContext()), 64);
+        c.addView(iv, new LinearLayout.LayoutParams(dp(26), dp(26)));
+        LinearLayout mid = new LinearLayout(getContext());
+        mid.setOrientation(LinearLayout.VERTICAL);
+        mid.setPadding(dp(8), 0, 0, 0);
+        TextView name = text(14, 0xFFFFFFFF, medium);
+        name.setText(Sports.teamShort(getContext()));
+        mid.addView(name);
+        TextView what = text(11, 0xB3FFFFFF, regular);
+        what.setText("Último partido y tabla");
+        what.setPadding(0, dp(2), 0, 0);
+        mid.addView(what);
+        c.addView(mid);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(44));
+        lp.setMargins(dp(5), 0, dp(5), 0);
+        c.setLayoutParams(lp);
+        style(c, name, what, true, myColor, false, false);
+        c.setOnFocusChangeListener((v, f) -> {
+            style(c, name, what, true, myColor, f, false);
+            v.animate().scaleX(f ? 1.06f : 1f).scaleY(f ? 1.06f : 1f).setDuration(120).start();
+        });
+        c.setOnClickListener(v -> GameActivity.open(getContext(), ids, paths, leagues, casts, 0));
         return c;
     }
 
@@ -121,29 +175,6 @@ final class SportsStripView extends HorizontalScrollView {
         Logos.into(iv, t.logo, 64);
         iv.setLayoutParams(new LinearLayout.LayoutParams(dp(26), dp(26)));
         return iv;
-    }
-
-    /** Opens the app that carries the game, if the TV has it. */
-    private void openBroadcast(String broadcast) {
-        String b = broadcast == null ? "" : broadcast.toLowerCase(java.util.Locale.ROOT);
-        String[][] map = {
-                {"prime", "com.amazon.amazonvideo.livingroom"},
-                {"espn", "com.disney.disneyplus"},
-                {"disney", "com.disney.disneyplus"},
-                {"youtube", "com.google.android.youtube.tv"},
-                {"netflix", "com.netflix.ninja"},
-                {"peacock", "com.peacocktv.peacockandroid"},
-                {"paramount", "com.cbs.ca"},
-                {"max", "com.wbd.stream"},
-        };
-        for (String[] m : map) {
-            if (!b.contains(m[0])) continue;
-            Intent i = getContext().getPackageManager().getLeanbackLaunchIntentForPackage(m[1]);
-            if (i != null) {
-                getContext().startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                return;
-            }
-        }
     }
 
     private TextView text(float sp, int color, Typeface tf) {

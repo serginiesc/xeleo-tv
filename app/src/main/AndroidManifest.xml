@@ -49,6 +49,14 @@
             android:windowSoftInputMode="adjustPan|stateHidden"
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
 
+        <!-- The game panel over Home: score, leaders, team stats and standings, from the "Hoy" row. -->
+        <activity
+            android:name=".GameActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+
         <!-- The En vivo tab: Pluto TV's guide, opening channels in the Pluto TV app. -->
         <activity
             android:name=".LiveActivity"
