@@ -51,6 +51,66 @@ final class Logos {
         });
     }
 
+    /** A few programme pictures for En vivo's preview, without alpha (half the memory), apart from the logos. */
+    private static final LruCache<String, Bitmap> PHOTOS = new LruCache<String, Bitmap>(6 * 1024 * 1024) {
+        @Override
+        protected int sizeOf(String key, Bitmap b) {
+            return b.getByteCount();
+        }
+    };
+
+    /**
+     * Like into, for a big picture, trying fallback when url doesn't load; shown runs once it is on screen (at once
+     * when cached or when there is none).
+     */
+    static void photo(ImageView view, String url, String fallback, Runnable shown) {
+        view.setTag(url);
+        Bitmap hit = url.isEmpty() ? null : PHOTOS.get(url);
+        if (hit != null || url.isEmpty()) {
+            view.setImageBitmap(hit);
+            shown.run();
+            return;
+        }
+        POOL.execute(() -> {
+            Bitmap b = fetchPhoto(url);
+            if (b == null && !fallback.isEmpty()) b = fetchPhoto(fallback);
+            if (b == null) {
+                MAIN.post(() -> {
+                    if (url.equals(view.getTag())) {
+                        view.setImageBitmap(null);
+                        shown.run();
+                    }
+                });
+                return;
+            }
+            PHOTOS.put(url, b);
+            Bitmap done = b;
+            MAIN.post(() -> {
+                if (url.equals(view.getTag())) {
+                    view.setImageBitmap(done);
+                    shown.run();
+                }
+            });
+        });
+    }
+
+    private static Bitmap fetchPhoto(String url) {
+        try {
+            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(10000);
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inPreferredConfig = Bitmap.Config.RGB_565;
+            try (InputStream in = conn.getInputStream()) {
+                return BitmapFactory.decodeStream(in, null, o);
+            } finally {
+                conn.disconnect();
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     /** Blocking fetch for background callers (the alert card). */
     static Bitmap get(String url, int px) {
         String small = Sports.smallLogo(url, px);

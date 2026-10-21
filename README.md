@@ -37,6 +37,11 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
   sus colores, muestra su logo, la hora, el canal y la cuenta regresiva, y festeja si gana. Avisos opcionales
   sobre cualquier app al empezar, al anotar y al terminar (se pueden apagar si ves el partido con retraso).
   Datos de ESPN (servicio público sin clave, no oficial: puede cambiar).
+- **En vivo** (menú rápido → En vivo, apagado de fábrica): una pestaña con los canales gratis de Pluto TV en filas
+  (Destacados, Noticias, Deportes, Películas…) y arriba una vista previa del que tengas seleccionado: imagen,
+  programa, descripción y cuánto falta. OK abre el canal en la app de Pluto TV (si no está instalada, la abre en
+  Play Store). XELEO solo muestra la guía; el video lo pone Pluto. Guía de Pluto TV (pública, sin clave, no
+  oficial: puede cambiar).
 
 ## Instalar
 

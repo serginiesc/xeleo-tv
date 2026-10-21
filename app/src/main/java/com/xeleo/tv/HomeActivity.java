@@ -79,6 +79,8 @@ public class HomeActivity extends Activity {
     private FrameLayout appsOverlay;
     private GridLayout appsGrid;
     private TextView appsHint;
+    /** The En vivo tab, shown only while it is on (Quick settings > En vivo). */
+    private TextView livePill;
     private View firstCard;
     private LinearLayout recentsRow;
     private TextView tagline;
@@ -273,6 +275,7 @@ public class HomeActivity extends Activity {
         updateGreeting();
         refreshSports();
         brandName.setText(Profile.tvName(this));   // may have changed in Personalizar
+        livePill.setVisibility(Live.enabled(this) ? View.VISIBLE : View.GONE);
         lat = Profile.lat(this);
         lon = Profile.lon(this);
         updateScenery(false);
@@ -341,6 +344,8 @@ public class HomeActivity extends Activity {
         pills.setBackground(glass(dp(22)));
         pills.addView(pill("Inicio", true, v -> { closeApps(); if (firstCard != null) firstCard.requestFocus(); }));
         pills.addView(pill("Apps", false, v -> openApps()));
+        livePill = pill("En vivo", false, v -> startActivity(new Intent(this, LiveActivity.class)));
+        pills.addView(livePill);
         pills.addView(pill("Gemini", false, v -> openAssistant()));
         pills.addView(pill("Ajustes", false, v -> openQuickSettings()));
         brand.addView(pills);

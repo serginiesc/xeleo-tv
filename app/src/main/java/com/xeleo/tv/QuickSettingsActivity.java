@@ -94,6 +94,12 @@ public class QuickSettingsActivity extends Activity {
         addTile(tiles, R.drawable.ic_apps, "Apps", null, new Intent(Settings.ACTION_APPLICATION_SETTINGS));
         addTile(tiles, R.drawable.ic_sports, "Deportes", !Sports.enabled(this) ? "Apagado"
                 : Sports.teamShort(this).isEmpty() ? "Encendido" : Sports.teamShort(this), new Intent(this, SportsSettingsActivity.class));
+        View live = addTile(tiles, R.drawable.ic_live, "En vivo", Live.enabled(this) ? "Encendido" : "Apagado", null);
+        live.setOnClickListener(v -> {
+            Live.setEnabled(this, !Live.enabled(this));
+            TextView sub = (TextView) ((LinearLayout) ((LinearLayout) v).getChildAt(1)).getChildAt(1);
+            sub.setText(Live.enabled(this) ? "Encendido" : "Apagado");
+        });
         addTile(tiles, R.drawable.ic_person, "Personalizar", Profile.tvName(this), new Intent(this, ProfileActivity.class));
         View restart = addTile(tiles, R.drawable.ic_power, "Reiniciar", "Apagar o reiniciar", null);
         restart.setOnClickListener(v -> {
