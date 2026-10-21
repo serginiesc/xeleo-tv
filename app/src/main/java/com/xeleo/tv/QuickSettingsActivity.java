@@ -97,6 +97,7 @@ public class QuickSettingsActivity extends Activity {
         View live = addTile(tiles, R.drawable.ic_live, "En vivo", Live.enabled(this) ? "Encendido" : "Apagado", null);
         live.setOnClickListener(v -> {
             Live.setEnabled(this, !Live.enabled(this));
+            Live.prefetch(this);
             TextView sub = (TextView) ((LinearLayout) ((LinearLayout) v).getChildAt(1)).getChildAt(1);
             sub.setText(Live.enabled(this) ? "Encendido" : "Apagado");
         });

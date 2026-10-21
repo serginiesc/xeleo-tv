@@ -93,11 +93,46 @@ public class LiveActivity extends Activity {
 
         status = text(16, TEXT_DIM, regular);
         status.setGravity(Gravity.CENTER);
-        status.setText("Cargando la guía de Pluto TV…");
+        status.setVisibility(View.GONE);
         root.addView(status, new FrameLayout.LayoutParams(-1, dp(262), Gravity.BOTTOM));
 
         setContentView(root);
+        placeholders();
         Live.load(this, this::onGuide);
+    }
+
+    /** Back (or Home) leaves; it fades out the way it faded in. */
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+    }
+
+    /** Dim empty cards, gently pulsing, for the moment the guide takes when Home couldn't fetch it ahead. */
+    private void placeholders() {
+        for (int r = 0; r < 2; r++) {
+            View label = new View(this);
+            label.setBackground(round(0x1FFFFFFF, dp(4)));
+            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(dp(90), dp(14));
+            llp.setMargins(dp(40), dp(12), 0, dp(10));
+            rowsBox.addView(label, llp);
+            LinearLayout line = new LinearLayout(this);
+            line.setPadding(dp(40), dp(4), 0, dp(6));
+            for (int i = 0; i < 5; i++) {
+                View card = new View(this);
+                card.setBackground(round(0x14FFFFFF, dp(12)));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(184), dp(96));
+                lp.rightMargin = dp(12);
+                line.addView(card, lp);
+            }
+            rowsBox.addView(line);
+        }
+        android.animation.ObjectAnimator pulse = android.animation.ObjectAnimator.ofFloat(rowsBox, "alpha", 1f, 0.45f);
+        pulse.setDuration(700);
+        pulse.setRepeatMode(android.animation.ValueAnimator.REVERSE);
+        pulse.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        pulse.start();
+        rowsBox.setTag(pulse);
     }
 
     @Override
@@ -239,12 +274,17 @@ public class LiveActivity extends Activity {
 
     private void onGuide(List<Live.Row> rows, String error) {
         if (isFinishing() || isDestroyed()) return;
+        if (rowsBox.getTag() instanceof android.animation.Animator) ((android.animation.Animator) rowsBox.getTag()).cancel();
+        rowsBox.setTag(null);
+        rowsBox.removeAllViews();
         if (error != null || rows.isEmpty()) {
+            rowsBox.setAlpha(1f);
             status.setText(error != null ? error : "Pluto TV no tiene canales para esta región.");
+            status.setVisibility(View.VISIBLE);
             return;
         }
-        status.setVisibility(View.GONE);
-        rowsBox.removeAllViews();
+        rowsBox.setAlpha(0f);
+        rowsBox.animate().alpha(1f).setDuration(220).start();
         View first = null;
         for (Live.Row r : rows) {
             TextView label = text(15, TEXT, medium);
@@ -257,6 +297,7 @@ public class LiveActivity extends Activity {
             hs.setClipToPadding(false);
             LinearLayout line = new LinearLayout(this);
             line.setClipChildren(false);
+            line.setClipToPadding(false);   // the focused card grows into the padding; don't cut its frame
             line.setPadding(dp(40), dp(4), dp(40), dp(6));
             for (Live.Channel ch : r.channels) {
                 View card = card(ch);

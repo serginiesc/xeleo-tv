@@ -91,12 +91,16 @@ final class Live {
     private static final int PER_ROW = 10;
     /** The guide is fetched again after this long; programmes in between are worked out from what we have. */
     private static final long FRESH_MS = 30 * 60_000L;
+    /** Up to this old the cache still answers (programmes are worked out from the time, four hours ahead). */
+    private static final long USABLE_MS = 3 * 3600_000L;
     private static final long HOURS_MS = 4 * 3600_000L;
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static List<Row> cache;
     private static long cachedAt;
     private static String token;
+    private static boolean fetching;
+    private static final List<Callback> waiting = new ArrayList<>();
 
     private Live() {}
 
@@ -125,13 +129,33 @@ final class Live {
 
     // ---------------------------------------------------------------- guide
 
-    /** The rows for the tab; calls back on the main thread, from the cache when it is fresh enough. */
+    /**
+     * The rows for the tab, on the main thread. Home fetches them ahead (prefetch), so the tab usually gets them
+     * at once from the cache; a cache older than FRESH_MS still answers at once and is renewed behind.
+     */
     static void load(Context context, Callback cb) {
-        if (cache != null && System.currentTimeMillis() - cachedAt < FRESH_MS) {
+        long age = System.currentTimeMillis() - cachedAt;
+        if (cache != null && age < USABLE_MS) {
             List<Row> rows = cache;
             MAIN.post(() -> cb.onGuide(rows, null));
+            if (age >= FRESH_MS) fetchBehind(context, null);
             return;
         }
+        fetchBehind(context, cb);
+    }
+
+    /** Fetches the guide ahead of time, so the tab opens without waiting; Home calls it when it comes back. */
+    static void prefetch(Context context) {
+        if (enabled(context) && (cache == null || System.currentTimeMillis() - cachedAt >= FRESH_MS)) {
+            fetchBehind(context, null);
+        }
+    }
+
+    /** One fetch at a time: callers that arrive meanwhile get its result. Main thread only. */
+    private static void fetchBehind(Context context, Callback cb) {
+        if (cb != null) waiting.add(cb);
+        if (fetching) return;
+        fetching = true;
         String client = clientId(context.getApplicationContext());
         new Thread(() -> {
             List<Row> rows;
@@ -140,6 +164,12 @@ final class Live {
                 rows = fetch(client);
                 cache = rows;
                 cachedAt = System.currentTimeMillis();
+                // The picture the tab opens with, so the preview isn't empty for a moment.
+                if (!rows.isEmpty() && !rows.get(0).channels.isEmpty()) {
+                    Channel first = rows.get(0).channels.get(0);
+                    Program p = first.at(System.currentTimeMillis());
+                    Logos.warm(p != null && !p.image.isEmpty() ? p.image : first.image);
+                }
             } catch (Exception e) {
                 token = null;   // a stale session is the usual cause; the next try starts a new one
                 rows = cache != null ? cache : new ArrayList<>();
@@ -147,7 +177,12 @@ final class Live {
             }
             List<Row> result = rows;
             String err = error;
-            MAIN.post(() -> cb.onGuide(result, err));
+            MAIN.post(() -> {
+                fetching = false;
+                List<Callback> todo = new ArrayList<>(waiting);
+                waiting.clear();
+                for (Callback c : todo) c.onGuide(result, err);
+            });
         }).start();
     }
 

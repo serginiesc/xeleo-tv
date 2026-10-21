@@ -276,6 +276,7 @@ public class HomeActivity extends Activity {
         refreshSports();
         brandName.setText(Profile.tvName(this));   // may have changed in Personalizar
         livePill.setVisibility(Live.enabled(this) ? View.VISIBLE : View.GONE);
+        Live.prefetch(this);   // so En vivo opens with the guide already there
         lat = Profile.lat(this);
         lon = Profile.lon(this);
         updateScenery(false);
@@ -344,7 +345,10 @@ public class HomeActivity extends Activity {
         pills.setBackground(glass(dp(22)));
         pills.addView(pill("Inicio", true, v -> { closeApps(); if (firstCard != null) firstCard.requestFocus(); }));
         pills.addView(pill("Apps", false, v -> openApps()));
-        livePill = pill("En vivo", false, v -> startActivity(new Intent(this, LiveActivity.class)));
+        livePill = pill("En vivo", false, v -> {
+            startActivity(new Intent(this, LiveActivity.class));
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+        });
         pills.addView(livePill);
         pills.addView(pill("Gemini", false, v -> openAssistant()));
         pills.addView(pill("Ajustes", false, v -> openQuickSettings()));

@@ -94,6 +94,15 @@ final class Logos {
         });
     }
 
+    /** Downloads a picture into the cache ahead of time (En vivo's first preview), unless it is there. */
+    static void warm(String url) {
+        if (url.isEmpty() || PHOTOS.get(url) != null) return;
+        POOL.execute(() -> {
+            Bitmap b = fetchPhoto(url);
+            if (b != null) PHOTOS.put(url, b);
+        });
+    }
+
     private static Bitmap fetchPhoto(String url) {
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
