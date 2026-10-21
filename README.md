@@ -68,5 +68,5 @@ sea suya (`adb shell dumpsys wifi | grep -o 'cname=[^ ]*'`): si lo es, olvida la
 - Java puro, sin librerías. `minSdk 26`, `targetSdk 34`.
 - La app necesita acceso a notificaciones (solo para saber qué se está reproduciendo) y un servicio de
   accesibilidad (botón Inicio largo, temporizador, reinicio y recientes); `install.sh` los activa.
-- Fuente: [Outfit](https://github.com/Outfitio/Outfit-Fonts), licencia SIL OFL 1.1 (`FONT-LICENSE-OFL.txt`).
+- Fuente: [Outfit](https://github.com/Outfitio/Outfit-Fonts), licencia SIL OFL 1.1 (`docs/licencias/OFL-Outfit.txt`).
   Íconos: Material Icons de Google (Apache 2.0).
