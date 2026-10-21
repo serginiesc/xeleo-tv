@@ -78,6 +78,7 @@ public class HomeActivity extends Activity {
     private LinearLayout appRow;
     private FrameLayout appsOverlay;
     private GridLayout appsGrid;
+    private TextView appsHint;
     private View firstCard;
     private LinearLayout recentsRow;
     private TextView tagline;
@@ -88,10 +89,14 @@ public class HomeActivity extends Activity {
     /** Your team's game today and its next one (Sports mode). */
     private Sports.Game myGame, nextGame;
     private final List<App> apps = new ArrayList<>();
+    /** The apps on Home, in order (AppOrder); the rest are only in Todas las apps. */
+    private final List<App> home = new ArrayList<>();
     /** The card being moved (hold OK on a card in the row), or null. */
     private View moving;
     /** False until the release of the long press that started moving, which must not put the card down. */
     private boolean movingArmed;
+    /** True from a long press in Todas las apps until OK is released, so that release doesn't open the app. */
+    private boolean swallowOk;
 
     /** Fetches the weather as soon as the network is up: at boot Home starts before Wi-Fi connects. */
     private final android.net.ConnectivityManager.NetworkCallback networkUp =
@@ -600,23 +605,55 @@ public class HomeActivity extends Activity {
         }
         for (App a : all) if (!apps.contains(a)) apps.add(a);
         AppOrder.apply(this, apps, a -> a.pkg);
+        home.clear();
+        List<String> saved = AppOrder.home(this);
+        if (saved == null) {
+            for (App a : apps) if (home.size() < AppOrder.HOME_DEFAULT) home.add(a);
+            saveHome();
+        } else {
+            for (String pkg : saved) for (App a : apps) if (a.pkg.equals(pkg)) home.add(a);
+        }
+    }
+
+    private void saveHome() {
+        List<String> pkgs = new ArrayList<>();
+        for (App a : home) pkgs.add(a.pkg);
+        AppOrder.saveHome(this, pkgs);
+    }
+
+    private boolean onHome(App app) {
+        for (App a : home) if (a.pkg.equals(app.pkg)) return true;
+        return false;
     }
 
     private void buildRow() {
         View focused = getCurrentFocus();
-        String keep = focused != null && focused.getTag() instanceof App ? ((App) focused.getTag()).pkg : null;
+        String keep = focused != null && focused.getParent() == appRow && focused.getTag() instanceof App
+                ? ((App) focused.getTag()).pkg : null;
         appRow.removeAllViews();
         firstCard = null;
         View restore = null;
-        for (App app : apps) {
+        for (App app : home) {
             View card = card(app, 124, 70);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(124), dp(70));
-            lp.rightMargin = dp(12);
-            appRow.addView(card, lp);
+            appRow.addView(card, rowParams());
             if (firstCard == null) firstCard = card;
             if (app.pkg.equals(keep)) restore = card;
         }
+        // Last in the row: opens Todas las apps, where the rest are and where you add them.
+        View add = card(new App("", "Agregar", null, getDrawable(R.drawable.ic_add), false), 124, 70);
+        add.setBackgroundColor(0x33FFFFFF);
+        add.setOnClickListener(v -> openApps());
+        add.setOnKeyListener(null);
+        appRow.addView(add, rowParams());
+        if (firstCard == null) firstCard = add;
+        if ("".equals(keep)) restore = add;
         if (restore != null) restore.requestFocus();
+    }
+
+    private LinearLayout.LayoutParams rowParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(124), dp(70));
+        lp.rightMargin = dp(12);
+        return lp;
     }
 
     private View card(App app, int wDp, int hDp) {
@@ -740,13 +777,25 @@ public class HomeActivity extends Activity {
 
     // ---------------------------------------------------------------- moving a card
 
-    /** Hold OK on a card in the row to move it; Left and Right move it, OK or Back puts it down. */
+    /**
+     * Hold OK on a card in the row to move it: Left and Right move it, Down takes it off Home, OK or Back puts it
+     * down. Hold OK on a card in Todas las apps to add it to Home or take it off.
+     */
     private boolean onCardKey(View card, int keyCode, KeyEvent event) {
         boolean ok = keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER;
         if (moving == null) {
-            if (card.getParent() == appRow && ok && event.getAction() == KeyEvent.ACTION_DOWN
-                    && event.getRepeatCount() == 1) {
+            if (swallowOk && ok) {
+                if (event.getAction() == KeyEvent.ACTION_UP) swallowOk = false;
+                return true;
+            }
+            boolean hold = ok && event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 1;
+            if (hold && card.getParent() == appRow) {
                 startMove(card);
+                return true;
+            }
+            if (hold && card.getParent() == appsGrid) {
+                swallowOk = true;
+                toggleHome((App) card.getTag());
                 return true;
             }
             return false;
@@ -762,17 +811,44 @@ public class HomeActivity extends Activity {
         if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
             int i = appRow.indexOfChild(card);
             int j = i + (keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
-            if (j >= 0 && j < appRow.getChildCount()) {
+            if (j >= 0 && j < home.size()) {   // never past Agregar, the last card
                 appRow.removeViewAt(i);
                 appRow.addView(card, j);
-                apps.add(j, apps.remove(i));
+                home.add(j, home.remove(i));
                 firstCard = appRow.getChildAt(0);
                 card.requestFocus();
                 keepInView(card);
             }
             return true;
         }
-        return keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN || ok;
+        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            int i = appRow.indexOfChild(card);
+            moving = null;
+            home.remove(i);
+            saveHome();
+            buildRow();
+            appRow.getChildAt(Math.min(i, appRow.getChildCount() - 1)).requestFocus();
+            shownPhase = null;
+            updateScenery(false);
+            buildGrid();
+            return true;
+        }
+        return keyCode == KeyEvent.KEYCODE_DPAD_UP || ok;
+    }
+
+    /** Adds the app to the end of Home, or takes it off; it stays in Todas las apps either way. */
+    private void toggleHome(App app) {
+        boolean was = onHome(app);
+        if (was) home.removeIf(a -> a.pkg.equals(app.pkg));
+        else home.add(app);
+        saveHome();
+        buildRow();
+        buildGrid();
+        appsHint.setText((was ? "Se quitó del inicio: " : "Se agregó al inicio: ") + app.label);
+        for (int i = 0; i < appsGrid.getChildCount(); i++) {
+            View c = appsGrid.getChildAt(i);
+            if (((App) c.getTag()).pkg.equals(app.pkg)) c.requestFocus();
+        }
     }
 
     private void startMove(View card) {
@@ -783,15 +859,13 @@ public class HomeActivity extends Activity {
         b.setStroke(dp(4), 0xFF8AB4F8);
         ringOf(card).setBackground(b);
         card.animate().scaleX(1.18f).scaleY(1.18f).setDuration(140).start();
-        phaseLabel.setText("Mueve con ◀ ▶  ·  OK para soltar");
+        phaseLabel.setText("Mueve con ◀ ▶  ·  ▼ lo quita del inicio  ·  OK para soltar");
     }
 
     private void endMove() {
         View card = moving;
         moving = null;
-        List<String> order = new ArrayList<>();
-        for (App a : apps) order.add(a.pkg);
-        AppOrder.save(this, order);
+        saveHome();
         if (card != null) {
             boolean f = card.hasFocus();
             GradientDrawable b = new GradientDrawable();
@@ -835,14 +909,17 @@ public class HomeActivity extends Activity {
         col.setClipChildren(false);
         TextView title = text(24, TEXT, medium);
         title.setText("Todas las apps");
-        col.addView(title);
+        col.addView(title, new LinearLayout.LayoutParams(-2, -2));   // wrap, so the column centres them
+        appsHint = text(14, TEXT_DIM, medium);
+        appsHint.setPadding(0, dp(8), 0, 0);
+        col.addView(appsHint, new LinearLayout.LayoutParams(-2, -2));
         appsGrid = new GridLayout(this);
         appsGrid.setColumnCount(5);
         appsGrid.setClipChildren(false);
         appsGrid.setClipToPadding(false);
         appsGrid.setPadding(0, dp(16), 0, 0);
-        col.addView(appsGrid);
-        s.addView(col);
+        col.addView(appsGrid, new LinearLayout.LayoutParams(-2, -2));
+        s.addView(col, new FrameLayout.LayoutParams(-1, -2));
         o.addView(s, new FrameLayout.LayoutParams(-1, -1));
         return o;
     }
@@ -855,11 +932,27 @@ public class HomeActivity extends Activity {
             lp.width = dp(150);
             lp.height = dp(84);
             lp.setMargins(dp(9), dp(10), dp(9), dp(10));
+            if (onHome(app)) markOnHome((FrameLayout) c);
             appsGrid.addView(c, lp);
         }
     }
 
+    /** A small check in the corner of the apps that are on Home, under the focus frame. */
+    private void markOnHome(FrameLayout card) {
+        TextView check = text(13, 0xFF0B1A33, medium);
+        check.setText("✓");
+        check.setGravity(Gravity.CENTER);
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(0xFF8AB4F8);
+        check.setBackground(dot);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.TOP | Gravity.END);
+        lp.setMargins(0, dp(6), dp(6), 0);
+        card.addView(check, card.getChildCount() - 1, lp);
+    }
+
     private void openApps() {
+        appsHint.setText("OK la abre  ·  Mantén OK para ponerla o quitarla del inicio");
         appsOverlay.setAlpha(0f);
         appsOverlay.setVisibility(View.VISIBLE);
         appsOverlay.animate().alpha(1f).setDuration(180).start();

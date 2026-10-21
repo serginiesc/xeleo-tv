@@ -23,7 +23,9 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 - **Clima** de tu ciudad en la línea de abajo (Open-Meteo, sin clave).
 - **Saludo y nombre de la tele** ("Buenas noches, Ana" · "Ana TV"), editables desde la tele.
 - **Recientes:** botones con las últimas apps que abriste, vengan del inicio, del control o de Gemini.
-- **Fila de apps** con tus favoritas primero. Deja presionado OK sobre una app para moverla con ◀ ▶.
+- **Fila de apps** solo con las que tú eliges (al principio, las primeras 6); las demás quedan en Todas las apps.
+  Deja presionado OK sobre una app del inicio para moverla con ◀ ▶ o quitarla con ▼. En Todas las apps, deja
+  presionado OK para ponerla o quitarla del inicio; el botón **Agregar** al final de la fila lleva ahí.
 - **Reproductor:** lo que suena en Spotify, YouTube, etc., con anterior / pausa / siguiente, en el inicio y en el
   menú rápido.
 - **Menú rápido** al estilo Google TV (botón Ajustes o dejar presionado Inicio): protector de pantalla, Wi‑Fi,
