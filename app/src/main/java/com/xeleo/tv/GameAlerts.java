@@ -19,6 +19,7 @@ import android.widget.TextView;
  * Sports alerts over any app: kickoff, every score and the final of your team's game, as a small card in the top
  * right corner for a few seconds. Runs inside XeleoService (an accessibility overlay needs no extra permission).
  * Checks every 45 s while your team plays today, every 15 min otherwise; switched off in Quick settings > Deportes.
+ * Also a heads-up 15 minutes before kickoff, and the programme reminders set in En vivo (Reminders), every 30 s.
  */
 final class GameAlerts {
 
@@ -34,6 +35,9 @@ final class GameAlerts {
     private String gameId;
     private String lastState;
     private String lastMine, lastTheirs;
+    /** The game whose 15-minute heads-up was shown. */
+    private String kickoffShown;
+    private static final long KICKOFF_MS = 15 * 60_000L;
     private View card;
 
     GameAlerts(AccessibilityService service) {
@@ -42,10 +46,12 @@ final class GameAlerts {
         thread.start();
         bg = new Handler(thread.getLooper());
         bg.post(check);
+        bg.post(reminders);
     }
 
     void stop() {
         bg.removeCallbacks(check);
+        bg.removeCallbacks(reminders);
         thread.quitSafely();
         main.post(this::hide);
     }
@@ -87,6 +93,14 @@ final class GameAlerts {
                 show(game, them, "Anotó " + them.shortName, score + "  ·  " + game.detail);
             }
         }
+        // A heads-up a quarter of an hour before kickoff, once per game.
+        long left = game.start - System.currentTimeMillis();
+        if ("pre".equals(game.state) && left > 0 && left <= KICKOFF_MS && !game.id.equals(kickoffShown)) {
+            kickoffShown = game.id;
+            show(game, me, "En " + Math.max(1, left / 60_000) + " min: " + Sports.teamShort(service) + " vs " + them.shortName,
+                    game.broadcast.isEmpty() ? "Empieza a las " + Sports.when(service, game.start)
+                            : "Por " + game.broadcast + "  ·  " + Sports.when(service, game.start));
+        }
         gameId = game.id;
         lastState = game.state;
         lastMine = me.score;
@@ -102,8 +116,28 @@ final class GameAlerts {
     /** The card, unless Home is on screen (it already shows the game). */
     private void show(Sports.Game game, Sports.Team who, String title, String line) {
         if (XeleoService.homeOnScreen()) return;
-        Bitmap logo = Logos.get(who.logo, 96);
-        int color = who.color;
+        display(Logos.get(who.logo, 96), who.color, title, line);
+    }
+
+    /** A programme reminder from En vivo (Reminders), over any screen; called on the background thread. */
+    private void remind(Reminders.Item it) {
+        display(it.logo.isEmpty() ? null : Logos.get(it.logo, 96), 0xFF8AB4F8, "En 5 min: " + it.title,
+                it.channel + "  ·  Pluto TV  ·  " + android.text.format.DateFormat.getTimeFormat(service)
+                        .format(new java.util.Date(it.start)));
+    }
+
+    private final Runnable reminders = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                for (Reminders.Item it : Reminders.due(service, System.currentTimeMillis())) remind(it);
+            } catch (Exception ignored) {
+            }
+            bg.postDelayed(this, 30_000);
+        }
+    };
+
+    private void display(Bitmap logo, int color, String title, String line) {
         main.post(() -> {
             hide();
             WindowManager wm = service.getSystemService(WindowManager.class);
@@ -112,7 +146,7 @@ final class GameAlerts {
             c.setPadding(dp(14), dp(12), dp(20), dp(12));
             GradientDrawable bg = new GradientDrawable();
             bg.setCornerRadius(dp(18));
-            bg.setColor(0xF0131D23);
+            bg.setColor(0xFF131D23);   // opaque: whatever is behind must not show through the text
             bg.setStroke(dp(2), color | 0xFF000000);
             c.setBackground(bg);
             ImageView iv = new ImageView(service);

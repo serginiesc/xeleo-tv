@@ -116,6 +116,10 @@ public class HomeActivity extends Activity {
     private final BroadcastReceiver refresh = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
+            if (i.getBooleanExtra("all", false)) {   // settings restored: build Home again from them
+                recreate();
+                return;
+            }
             shownKind = null;
             updateScenery(true);
         }
@@ -150,6 +154,7 @@ public class HomeActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Sports.init(this);
         density = getResources().getDisplayMetrics().density;
         regular = getResources().getFont(R.font.outfit_regular);
         medium = getResources().getFont(R.font.outfit_medium);

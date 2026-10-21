@@ -84,6 +84,7 @@ public class XeleoService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         running = this;
+        Sports.init(this);
         alerts = new GameAlerts(this);
     }
 

@@ -23,7 +23,9 @@
         android:icon="@drawable/ic_launcher"
         android:banner="@drawable/banner"
         android:theme="@style/Theme.Xeleo"
-        android:allowBackup="false">
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
 
         <activity
             android:name=".HomeActivity"

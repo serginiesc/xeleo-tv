@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android's backup and device-to-device transfer (Android 12+): only the settings, as Backup.FILES. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="profile.xml" />
+        <include domain="sharedpref" path="app_order.xml" />
+        <include domain="sharedpref" path="sports.xml" />
+        <include domain="sharedpref" path="live.xml" />
+        <include domain="sharedpref" path="reminders.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="profile.xml" />
+        <include domain="sharedpref" path="app_order.xml" />
+        <include domain="sharedpref" path="sports.xml" />
+        <include domain="sharedpref" path="live.xml" />
+        <include domain="sharedpref" path="reminders.xml" />
+    </device-transfer>
+</data-extraction-rules>

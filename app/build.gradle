@@ -2,6 +2,20 @@ plugins {
     id 'com.android.application'
 }
 
+// The release key: keystore.properties next to settings.gradle on our computer, environment variables on
+// GitHub (see .github/workflows/apk.yml). Without either, builds are signed with the debug key.
+def keyProps = new Properties()
+def keyFile = rootProject.file('keystore.properties')
+if (keyFile.exists()) keyFile.withInputStream { keyProps.load(it) }
+def keyValue = { String name, String env -> keyProps.getProperty(name) ?: System.getenv(env) }
+def hasReleaseKey = keyValue('storeFile', 'XELEO_KEYSTORE') != null
+
+// One version per commit, so the TV (and a future self-update) can tell a newer APK from an older one.
+def commitCount = providers.exec {
+    commandLine 'git', 'rev-list', '--count', 'HEAD'
+    ignoreExitValue = true
+}.standardOutput.asText.map { it.trim().isInteger() ? it.trim().toInteger() : 1 }.getOrElse(1)
+
 android {
     namespace 'com.xeleo.tv'
     compileSdk 34
@@ -10,8 +24,19 @@ android {
         applicationId 'com.xeleo.tv'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        versionCode commitCount
+        versionName "1.${commitCount}"
+    }
+
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile file(keyValue('storeFile', 'XELEO_KEYSTORE'))
+                storePassword keyValue('storePassword', 'XELEO_KEYSTORE_PASSWORD')
+                keyAlias keyValue('keyAlias', 'XELEO_KEY_ALIAS')
+                keyPassword keyValue('keyPassword', 'XELEO_KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
@@ -19,8 +44,7 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
-            // Installed over ADB on our own TV, never published: the debug key is enough.
-            signingConfig signingConfigs.debug
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
         }
     }
 

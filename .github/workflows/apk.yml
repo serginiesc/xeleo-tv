@@ -1,0 +1,62 @@
+# Builds the APK on every push to main and publishes it as the "ultima" release, so anyone can download
+# XELEO-TV.apk from the Releases page without compiling. Signed with the project's release key, kept in the
+# repository secrets: XELEO_KEYSTORE_B64 (the .jks in base64), XELEO_KEYSTORE_PASSWORD, XELEO_KEY_ALIAS and
+# XELEO_KEY_PASSWORD.
+name: APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the whole history: the version number is the commit count
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Release key
+        env:
+          XELEO_KEYSTORE_B64: ${{ secrets.XELEO_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$XELEO_KEYSTORE_B64" ]; then
+            echo "::error::Faltan los secretos de la firma (XELEO_KEYSTORE_B64 y compañía); ve README, «APK automático»."
+            exit 1
+          fi
+          echo "$XELEO_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/xeleo-release.jks"
+
+      - name: Build
+        env:
+          XELEO_KEYSTORE: ${{ runner.temp }}/xeleo-release.jks
+          XELEO_KEYSTORE_PASSWORD: ${{ secrets.XELEO_KEYSTORE_PASSWORD }}
+          XELEO_KEY_ALIAS: ${{ secrets.XELEO_KEY_ALIAS }}
+          XELEO_KEY_PASSWORD: ${{ secrets.XELEO_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --console=plain
+          cp app/build/outputs/apk/release/app-release.apk XELEO-TV.apk
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="1.$(git rev-list --count HEAD)"
+          NOTES="XELEO TV $VERSION, compilado del commit ${GITHUB_SHA::7}. Descarga XELEO-TV.apk y sigue «Con un APK ya hecho» en el README."
+          gh release delete ultima --yes --cleanup-tag 2>/dev/null || true
+          gh release create ultima XELEO-TV.apk --title "XELEO TV $VERSION" --notes "$NOTES" --target "$GITHUB_SHA" --latest

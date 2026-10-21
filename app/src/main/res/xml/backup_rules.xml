@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android's backup (Android 11 and older): only the settings, as Backup.FILES. -->
+<full-backup-content>
+    <include domain="sharedpref" path="profile.xml" />
+    <include domain="sharedpref" path="app_order.xml" />
+    <include domain="sharedpref" path="sports.xml" />
+    <include domain="sharedpref" path="live.xml" />
+    <include domain="sharedpref" path="reminders.xml" />
+</full-backup-content>

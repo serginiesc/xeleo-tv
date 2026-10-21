@@ -74,7 +74,7 @@ final class Live {
         void onGuide(List<Row> rows, String error);
     }
 
-    /** Shown first, as "Destacados", when the region has them: Mexican free-to-air TV, news and a few favourites. */
+    /** Mis canales before anyone picks: Mexican free-to-air TV, news and a few favourites, when the region has them. */
     private static final String[] PICKS = {
             "646ccc7a2858cb0008127367",   // Azteca UNO -1 hora
             "64e35aff6b1fdb0008ea8441",   // Imagen TV+
@@ -85,10 +85,10 @@ final class Live {
             "609ae5cd48d3200007b0a98e",   // Comedy Central South Park
             "65cf60d166eec80008724e6f",   // Azteca Deportes Premium
     };
-    /** Pluto's categories shown as rows, in this order (as Pluto TV Latin America names them). */
+    /** Pluto's categories first in the tab, in this order (as Pluto TV Latin America names them); the rest follow. */
     private static final String[] CATEGORIES = {"Noticias", "Deportes", "Películas", "Series", "Novelas", "Reality",
-            "Kids", "Música"};
-    private static final int PER_ROW = 10;
+            "Competencia", "Comedia", "Entretenimiento", "Kids", "Música"};
+    private static final int PER_ROW = 60;
     /** The guide is fetched again after this long; programmes in between are worked out from what we have. */
     private static final long FRESH_MS = 30 * 60_000L;
     /** Up to this old the cache still answers (programmes are worked out from the time, four hours ahead). */
@@ -118,6 +118,39 @@ final class Live {
         prefs(c).edit().putBoolean("on", on).apply();
     }
 
+    /** Mis canales, in order: the picked ones, else PICKS. */
+    static List<String> favorites(Context c) {
+        String saved = prefs(c).getString("fav", null);
+        if (saved == null) return new ArrayList<>(java.util.Arrays.asList(PICKS));
+        return new ArrayList<>(java.util.Arrays.asList(TextUtils.split(saved, ",")));
+    }
+
+    static void setFavorite(Context c, String id, boolean on) {
+        List<String> fav = favorites(c);
+        fav.remove(id);
+        if (on) fav.add(id);
+        prefs(c).edit().putString("fav", TextUtils.join(",", fav)).apply();
+    }
+
+    /** Channels hidden from every category (they stay under "Ocultos"). */
+    static java.util.Set<String> hidden(Context c) {
+        return new java.util.HashSet<>(prefs(c).getStringSet("hidden", java.util.Collections.emptySet()));
+    }
+
+    static void setHidden(Context c, String id, boolean on) {
+        java.util.Set<String> h = hidden(c);
+        if (on) h.add(id);
+        else h.remove(id);
+        prefs(c).edit().putStringSet("hidden", h).apply();
+    }
+
+    /** Every channel of the guide by id. */
+    static Map<String, Channel> index(List<Row> rows) {
+        Map<String, Channel> m = new LinkedHashMap<>();
+        for (Row r : rows) for (Channel ch : r.channels) m.put(ch.id, ch);
+        return m;
+    }
+
     private static String clientId(Context c) {
         String id = prefs(c).getString("client", "");
         if (id.isEmpty()) {
@@ -137,8 +170,22 @@ final class Live {
         long age = System.currentTimeMillis() - cachedAt;
         if (cache != null && age < USABLE_MS) {
             List<Row> rows = cache;
-            MAIN.post(() -> cb.onGuide(rows, null));
+            if (cb != null) MAIN.post(() -> cb.onGuide(rows, null));
             if (age >= FRESH_MS) fetchBehind(context, null);
+            return;
+        }
+        if (cache == null && !diskTried) {
+            // After a restart, the copy on disk first (it also covers a TV without internet yet).
+            diskTried = true;
+            Context app = context.getApplicationContext();
+            new Thread(() -> {
+                List<Row> rows = readDisk(app);
+                MAIN.post(() -> {
+                    if (rows != null && cache == null) cache = rows;
+                    else if (rows == null) cachedAt = 0;
+                    load(app, cb);
+                });
+            }).start();
             return;
         }
         fetchBehind(context, cb);
@@ -147,7 +194,95 @@ final class Live {
     /** Fetches the guide ahead of time, so the tab opens without waiting; Home calls it when it comes back. */
     static void prefetch(Context context) {
         if (enabled(context) && (cache == null || System.currentTimeMillis() - cachedAt >= FRESH_MS)) {
-            fetchBehind(context, null);
+            load(context, null);
+        }
+    }
+
+    // ---------------------------------------------------------------- the copy on disk
+
+    private static boolean diskTried;
+
+    private static java.io.File diskFile(Context c) {
+        return new java.io.File(c.getFilesDir(), "guia-pluto.json");
+    }
+
+    private static void writeDisk(Context c, List<Row> rows, long at) {
+        try {
+            JSONArray out = new JSONArray();
+            for (Row r : rows) {
+                JSONArray chans = new JSONArray();
+                for (Channel ch : r.channels) {
+                    JSONArray progs = new JSONArray();
+                    for (Program p : ch.programs) {
+                        progs.put(new JSONObject().put("t", p.title).put("e", p.episode).put("d", p.description)
+                                .put("i", p.image).put("s", p.start).put("x", p.stop).put("l", p.live));
+                    }
+                    chans.put(new JSONObject().put("id", ch.id).put("slug", ch.slug).put("name", ch.name)
+                            .put("logo", ch.logo).put("image", ch.image).put("p", progs));
+                }
+                out.put(new JSONObject().put("t", r.title).put("c", chans));
+            }
+            java.io.File tmp = new java.io.File(c.getFilesDir(), "guia-pluto.tmp");
+            try (java.io.FileOutputStream f = new java.io.FileOutputStream(tmp)) {
+                f.write(new JSONObject().put("at", at).put("rows", out).toString().getBytes("UTF-8"));
+            }
+            //noinspection ResultOfMethodCallIgnored
+            tmp.renameTo(diskFile(c));
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** The guide saved by the last fetch, if it is recent enough to still say what's on; sets cachedAt. */
+    private static List<Row> readDisk(Context c) {
+        java.io.File f = diskFile(c);
+        if (!f.exists()) return null;
+        try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            byte[] b = new byte[16384];
+            for (int n; (n = in.read(b)) > 0; ) buf.write(b, 0, n);
+            JSONObject all = new JSONObject(buf.toString("UTF-8"));
+            long at = all.getLong("at");
+            if (System.currentTimeMillis() - at >= USABLE_MS) return null;
+            Map<String, Channel> seen = new HashMap<>();
+            List<Row> rows = new ArrayList<>();
+            JSONArray rs = all.getJSONArray("rows");
+            for (int i = 0; i < rs.length(); i++) {
+                JSONObject r = rs.getJSONObject(i);
+                Row row = new Row(r.optString("t"));
+                JSONArray chans = r.getJSONArray("c");
+                for (int k = 0; k < chans.length(); k++) {
+                    JSONObject o = chans.getJSONObject(k);
+                    Channel ch = seen.get(o.optString("id"));
+                    if (ch == null) {
+                        ch = new Channel();
+                        ch.id = o.optString("id");
+                        ch.slug = o.optString("slug");
+                        ch.name = o.optString("name");
+                        ch.logo = o.optString("logo");
+                        ch.image = o.optString("image");
+                        JSONArray ps = o.getJSONArray("p");
+                        for (int j = 0; j < ps.length(); j++) {
+                            JSONObject q = ps.getJSONObject(j);
+                            Program p = new Program();
+                            p.title = q.optString("t");
+                            p.episode = q.optString("e");
+                            p.description = q.optString("d");
+                            p.image = q.optString("i");
+                            p.start = q.optLong("s");
+                            p.stop = q.optLong("x");
+                            p.live = q.optBoolean("l");
+                            ch.programs.add(p);
+                        }
+                        seen.put(ch.id, ch);
+                    }
+                    row.channels.add(ch);
+                }
+                rows.add(row);
+            }
+            cachedAt = at;
+            return rows;
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -156,7 +291,8 @@ final class Live {
         if (cb != null) waiting.add(cb);
         if (fetching) return;
         fetching = true;
-        String client = clientId(context.getApplicationContext());
+        Context app = context.getApplicationContext();
+        String client = clientId(app);
         new Thread(() -> {
             List<Row> rows;
             String error = null;
@@ -164,11 +300,15 @@ final class Live {
                 rows = fetch(client);
                 cache = rows;
                 cachedAt = System.currentTimeMillis();
+                writeDisk(app, rows, cachedAt);
                 // The picture the tab opens with, so the preview isn't empty for a moment.
-                if (!rows.isEmpty() && !rows.get(0).channels.isEmpty()) {
-                    Channel first = rows.get(0).channels.get(0);
+                Map<String, Channel> idx = index(rows);
+                for (String id : favorites(app)) {
+                    Channel first = idx.get(id);
+                    if (first == null) continue;
                     Program p = first.at(System.currentTimeMillis());
                     Logos.warm(p != null && !p.image.isEmpty() ? p.image : first.image);
+                    break;
                 }
             } catch (Exception e) {
                 token = null;   // a stale session is the usual cause; the next try starts a new one
@@ -213,26 +353,35 @@ final class Live {
             byId.put(c.id, c);
         }
 
+        // Every category, ours first in our order and then the rest as Pluto lists them.
         List<Row> rows = new ArrayList<>();
-        Row picks = new Row("Destacados");
-        for (String id : PICKS) if (byId.containsKey(id)) picks.channels.add(byId.get(id));
-        if (!picks.channels.isEmpty()) rows.add(picks);
         Map<String, JSONArray> cats = new LinkedHashMap<>();
         JSONArray catList = get(api + "categories", token).getJSONArray("data");
         for (int i = 0; i < catList.length(); i++) {
             JSONObject o = catList.getJSONObject(i);
             cats.put(o.optString("name"), o.optJSONArray("channelIDs"));
         }
-        for (String name : CATEGORIES) {
+        List<String> order = new ArrayList<>();
+        for (String name : CATEGORIES) if (cats.containsKey(name)) order.add(name);
+        for (String name : cats.keySet()) if (!order.contains(name)) order.add(name);
+        for (String name : order) {
             JSONArray ids = cats.get(name);
-            if (ids == null) continue;
             Row r = new Row(name);
-            for (int i = 0; i < ids.length() && r.channels.size() < PER_ROW; i++) {
+            for (int i = 0; ids != null && i < ids.length() && r.channels.size() < PER_ROW; i++) {
                 Channel c = byId.get(ids.getString(i));
                 if (c != null) r.channels.add(c);
             }
             if (!r.channels.isEmpty()) rows.add(r);
         }
+        // Channels in no category (rare) still count for Mis canales.
+        Row rest = new Row("");
+        for (String id : PICKS) {
+            Channel c = byId.get(id);
+            boolean inRow = false;
+            for (Row r : rows) if (r.channels.contains(c)) inRow = true;
+            if (c != null && !inRow) rest.channels.add(c);
+        }
+        if (!rest.channels.isEmpty()) rows.add(rest);
 
         // What's on, four hours from now, for every channel in a row; in batches so the URL stays short.
         Map<String, Channel> shown = new LinkedHashMap<>();

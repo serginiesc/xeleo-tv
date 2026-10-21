@@ -9,7 +9,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
@@ -19,9 +21,13 @@ import android.widget.TextClock;
 import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * The En vivo tab: Pluto TV's channels in rows, and on top a big preview of what the focused one shows now
@@ -87,7 +93,7 @@ public class LiveActivity extends Activity {
         rowsBox = new LinearLayout(this);
         rowsBox.setOrientation(LinearLayout.VERTICAL);
         rowsBox.setClipChildren(false);
-        rowsBox.setPadding(0, dp(6), 0, dp(24));
+        rowsBox.setPadding(0, dp(56), 0, dp(24));   // the chips and cards sit low, under the preview
         scroll.addView(rowsBox, new FrameLayout.LayoutParams(-1, -2));
         root.addView(scroll, new FrameLayout.LayoutParams(-1, dp(262), Gravity.BOTTOM));
 
@@ -272,6 +278,20 @@ public class LiveActivity extends Activity {
 
     // ---------------------------------------------------------------- rows
 
+    /** The chip for Mis canales and the one for hidden channels; the others are Pluto's category names. */
+    private static final String FAVORITES = "\u0001fav", HIDDEN = "\u0001hidden";
+
+    private List<Live.Row> rows;
+    private Map<String, Live.Channel> index;
+    private String selected = FAVORITES;
+    private LinearLayout chipsLine, cardsLine;
+    private HorizontalScrollView cardsScroll;
+    private TextView hint;
+    private final Map<String, TextView> chips = new LinkedHashMap<>();
+    /** True from a long press on a card until OK is released, so that release doesn't open the channel. */
+    private boolean swallowOk;
+    private FrameLayout sheet;
+
     private void onGuide(List<Live.Row> rows, String error) {
         if (isFinishing() || isDestroyed()) return;
         if (rowsBox.getTag() instanceof android.animation.Animator) ((android.animation.Animator) rowsBox.getTag()).cancel();
@@ -283,37 +303,257 @@ public class LiveActivity extends Activity {
             status.setVisibility(View.VISIBLE);
             return;
         }
+        this.rows = rows;
+        index = Live.index(rows);
         rowsBox.setAlpha(0f);
         rowsBox.animate().alpha(1f).setDuration(220).start();
-        View first = null;
-        for (Live.Row r : rows) {
-            TextView label = text(15, TEXT, medium);
-            label.setText(r.title);
-            label.setPadding(dp(40), dp(10), 0, dp(8));
-            rowsBox.addView(label);
-            HorizontalScrollView hs = new HorizontalScrollView(this);
-            hs.setHorizontalScrollBarEnabled(false);
-            hs.setClipChildren(false);
-            hs.setClipToPadding(false);
-            LinearLayout line = new LinearLayout(this);
-            line.setClipChildren(false);
-            line.setClipToPadding(false);   // the focused card grows into the padding; don't cut its frame
-            line.setPadding(dp(40), dp(4), dp(40), dp(6));
-            for (Live.Channel ch : r.channels) {
-                View card = card(ch);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(184), dp(96));
-                lp.rightMargin = dp(12);
-                line.addView(card, lp);
-                if (first == null) first = card;
-            }
-            hs.addView(line);
-            rowsBox.addView(hs);
-        }
+
+        HorizontalScrollView chipsScroll = new HorizontalScrollView(this);
+        chipsScroll.setHorizontalScrollBarEnabled(false);
+        chipsScroll.setClipChildren(false);
+        chipsScroll.setClipToPadding(false);
+        chipsLine = new LinearLayout(this);
+        chipsLine.setClipChildren(false);
+        chipsLine.setClipToPadding(false);
+        chipsLine.setPadding(dp(40), dp(4), dp(40), dp(4));
+        chipsScroll.addView(chipsLine);
+        rowsBox.addView(chipsScroll);
+
+        cardsScroll = new HorizontalScrollView(this);
+        cardsScroll.setHorizontalScrollBarEnabled(false);
+        cardsScroll.setClipChildren(false);
+        cardsScroll.setClipToPadding(false);
+        cardsLine = new LinearLayout(this);
+        cardsLine.setClipChildren(false);
+        cardsLine.setClipToPadding(false);   // the focused card grows into the padding; don't cut its frame
+        cardsLine.setPadding(dp(40), dp(10), dp(40), dp(8));
+        cardsScroll.addView(cardsLine);
+        rowsBox.addView(cardsScroll);
+
+        hint = text(11, TEXT_DIM, regular);
+        hint.setPadding(dp(40), dp(4), dp(40), 0);
+        rowsBox.addView(hint);
+
+        if (channels(FAVORITES).isEmpty()) selected = rows.get(0).title;
+        buildChips();
+        showCards(null);
+        View first = cardsLine.getChildCount() > 0 ? cardsLine.getChildAt(0) : chips.get(selected);
         if (first != null) {
-            View f = first;
-            f.post(f::requestFocus);
-            showHero((Live.Channel) f.getTag(), true);
+            first.post(first::requestFocus);
+            if (first.getTag() instanceof Live.Channel) showHero((Live.Channel) first.getTag(), true);
         }
+    }
+
+    /** The channels under a chip: Mis canales in their order, a category without the hidden ones, or the hidden. */
+    private List<Live.Channel> channels(String key) {
+        List<Live.Channel> out = new ArrayList<>();
+        Set<String> hidden = Live.hidden(this);
+        if (key.equals(FAVORITES)) {
+            for (String id : Live.favorites(this)) {
+                Live.Channel ch = index.get(id);
+                if (ch != null && !hidden.contains(id)) out.add(ch);
+            }
+        } else if (key.equals(HIDDEN)) {
+            for (String id : hidden) if (index.containsKey(id)) out.add(index.get(id));
+        } else {
+            for (Live.Row r : rows) {
+                if (!r.title.equals(key)) continue;
+                for (Live.Channel ch : r.channels) if (!hidden.contains(ch.id)) out.add(ch);
+            }
+        }
+        return out;
+    }
+
+    /** "Mis canales · 8", every category with its count, and "Ocultos · 2" while some are hidden. */
+    private void buildChips() {
+        chipsLine.removeAllViews();
+        chips.clear();
+        List<String> keys = new ArrayList<>();
+        keys.add(FAVORITES);
+        for (Live.Row r : rows) if (!r.title.isEmpty()) keys.add(r.title);
+        if (!channels(HIDDEN).isEmpty()) keys.add(HIDDEN);
+        if (!keys.contains(selected)) selected = FAVORITES;
+        for (String key : keys) {
+            String label = key.equals(FAVORITES) ? "★  Mis canales" : key.equals(HIDDEN) ? "Ocultos" : key;
+            TextView chip = text(13, TEXT, medium);
+            chip.setText(label + "  ·  " + channels(key).size());
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(dp(14), 0, dp(14), 0);
+            chip.setFocusable(true);
+            chip.setId(View.generateViewId());
+            styleChip(chip, false, key.equals(selected));
+            chip.setOnFocusChangeListener((v, f) -> {
+                styleChip(chip, f, key.equals(selected));
+                if (f && !key.equals(selected)) {
+                    // Focusing a chip shows its channels, without the focus leaving it.
+                    String old = selected;
+                    selected = key;
+                    if (chips.get(old) != null) styleChip(chips.get(old), false, false);
+                    showCards(null);
+                    List<Live.Channel> list = channels(key);   // and the preview, with its first channel
+                    if (!list.isEmpty()) {
+                        handler.removeCallbacks(pendingHero);
+                        pendingChannel = list.get(0);
+                        handler.postDelayed(pendingHero, 250);
+                    }
+                }
+            });
+            chip.setOnClickListener(v -> {
+                if (cardsLine.getChildCount() > 0) cardsLine.getChildAt(0).requestFocus();
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(32));
+            lp.rightMargin = dp(8);
+            chipsLine.addView(chip, lp);
+            chips.put(key, chip);
+        }
+    }
+
+    private void styleChip(TextView chip, boolean focused, boolean selected) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(16));
+        bg.setColor(focused ? 0xF2FFFFFF : selected ? 0x40FFFFFF : 0x1AFFFFFF);
+        if (!focused && !selected) bg.setStroke(1, 0x33FFFFFF);
+        chip.setBackground(bg);
+        chip.setTextColor(focused ? 0xFF15171C : TEXT);
+    }
+
+    /** The selected chip's channels as one row of cards; keeps the focus on keepId's card if it is still there. */
+    private void showCards(String keepId) {
+        cardsLine.removeAllViews();
+        List<Live.Channel> list = channels(selected);
+        TextView chip = chips.get(selected);
+        View keep = null;
+        for (Live.Channel ch : list) {
+            View card = card(ch);
+            if (chip != null) card.setNextFocusUpId(chip.getId());   // up goes back to this chip, not a neighbour
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(184), dp(96));
+            lp.rightMargin = dp(12);
+            cardsLine.addView(card, lp);
+            if (ch.id.equals(keepId)) keep = card;
+        }
+        cardsScroll.scrollTo(0, 0);
+        if (list.isEmpty()) {
+            TextView empty = text(13, TEXT_DIM, regular);
+            empty.setText(selected.equals(FAVORITES) ? "Mantén OK en un canal de cualquier categoría para agregarlo aquí."
+                    : "No hay canales aquí.");
+            empty.setGravity(Gravity.CENTER_VERTICAL);
+            cardsLine.addView(empty, new LinearLayout.LayoutParams(-2, dp(96)));
+        }
+        hint.setText(selected.equals(HIDDEN) ? "Mantén OK en un canal para volver a mostrarlo."
+                : "OK abre el canal  ·  Mantén OK para Mis canales, ocultarlo o un recordatorio");
+        if (keep != null) keep.requestFocus();
+    }
+
+    private boolean onCardKey(View card, int keyCode, KeyEvent e) {
+        boolean ok = keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER;
+        if (!ok) return false;
+        if (swallowOk) {
+            if (e.getAction() == KeyEvent.ACTION_UP) swallowOk = false;
+            return true;
+        }
+        if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 1) {
+            swallowOk = true;
+            openSheet((Live.Channel) card.getTag());
+            return true;
+        }
+        return false;
+    }
+
+    // ---------------------------------------------------------------- hold OK: what to do with a channel
+
+    private void openSheet(Live.Channel ch) {
+        closeSheet();
+        FrameLayout root = (FrameLayout) rowsBox.getRootView().findViewById(android.R.id.content);
+        sheet = new FrameLayout(this);
+        sheet.setBackgroundColor(0x99000000);
+        sheet.setClickable(true);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(18), dp(16), dp(18), dp(14));
+        box.setBackground(round(0xFA161C26, dp(18)));
+        TextView title = text(16, TEXT, medium);
+        title.setText(ch.name);
+        title.setPadding(dp(4), 0, 0, dp(10));
+        box.addView(title);
+
+        boolean fav = Live.favorites(this).contains(ch.id);
+        boolean hidden = Live.hidden(this).contains(ch.id);
+        View first = option(box, fav ? "Quitar de Mis canales" : "★  Agregar a Mis canales", () -> {
+            Live.setFavorite(this, ch.id, !fav);
+            done(ch, fav ? "Se quitó de Mis canales: " + ch.name : "Se agregó a Mis canales: " + ch.name);
+        });
+        option(box, hidden ? "Volver a mostrar" : "Ocultar canal", () -> {
+            Live.setHidden(this, ch.id, !hidden);
+            done(ch, hidden ? "Se volvió a mostrar: " + ch.name : "Se ocultó: " + ch.name + " (queda en Ocultos)");
+        });
+        Live.Program now = ch.at(System.currentTimeMillis());
+        Live.Program next = now != null ? ch.after(now) : null;
+        if (next != null) {
+            String key = Reminders.key(ch.id, next.start);
+            boolean set = Reminders.has(this, key);
+            String when = hm.format(new Date(next.start));
+            option(box, set ? "Quitar recordatorio de «" + next.title + "»"
+                    : "Recordar «" + next.title + "» · " + when, () -> {
+                if (set) Reminders.remove(this, key);
+                else Reminders.add(this, key, next.title, ch.name, ch.logo, next.start);
+                done(ch, set ? "Recordatorio quitado." : "Te aviso 5 min antes de las " + when + ", aunque estés en otra app.");
+            });
+        }
+        sheet.addView(box, new FrameLayout.LayoutParams(dp(380), -2, Gravity.CENTER));
+        root.addView(sheet, new FrameLayout.LayoutParams(-1, -1));
+        first.requestFocus();
+    }
+
+    private View option(LinearLayout box, String label, Runnable action) {
+        TextView t = text(14, TEXT, medium);
+        t.setText(label);
+        t.setSingleLine(true);
+        t.setEllipsize(TextUtils.TruncateAt.END);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setPadding(dp(14), 0, dp(14), 0);
+        t.setFocusable(true);
+        t.setClickable(true);
+        t.setBackground(round(0x14FFFFFF, dp(12)));
+        t.setOnFocusChangeListener((v, f) -> {
+            t.setBackground(round(f ? 0xF2FFFFFF : 0x14FFFFFF, dp(12)));
+            t.setTextColor(f ? 0xFF15171C : TEXT);
+        });
+        t.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(40));
+        lp.topMargin = dp(6);
+        box.addView(t, lp);
+        return t;
+    }
+
+    /** After an option: the counts and the row change, the focus stays on the channel (or its neighbour). */
+    private void done(Live.Channel ch, String message) {
+        closeSheet();
+        int at = -1;
+        for (int i = 0; i < cardsLine.getChildCount(); i++) if (cardsLine.getChildAt(i).getTag() == ch) at = i;
+        buildChips();
+        showCards(ch.id);
+        View focus = getCurrentFocus();
+        if ((focus == null || focus.getTag() != ch) && cardsLine.getChildCount() > 0) {
+            View near = cardsLine.getChildAt(Math.max(0, Math.min(at, cardsLine.getChildCount() - 1)));
+            if (near.isFocusable()) near.requestFocus();
+            else if (chips.get(selected) != null) chips.get(selected).requestFocus();
+        }
+        hint.setText(message);
+    }
+
+    private void closeSheet() {
+        if (sheet != null && sheet.getParent() != null) ((ViewGroup) sheet.getParent()).removeView(sheet);
+        sheet = null;
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (sheet != null) {
+            closeSheet();
+            showCards(null);
+            return;
+        }
+        super.onBackPressed();
     }
 
     private View card(Live.Channel ch) {
@@ -334,10 +574,12 @@ public class LiveActivity extends Activity {
         Logos.into(logo, ch.logo, 0);
         long now = System.currentTimeMillis();
         Live.Program p = ch.at(now);
-        if (p != null) {
-            TextView on = text(9, p.live ? 0xFFFF8A80 : TEXT_DIM, medium);
+        boolean star = Live.favorites(this).contains(ch.id) && !selected.equals(FAVORITES);   // in Mis canales
+        if (p != null || star) {
+            TextView on = text(9, p != null && p.live ? 0xFFFF8A80 : TEXT_DIM, medium);
             on.setLetterSpacing(0.08f);
-            on.setText(p.live ? "EN VIVO" : "AHORA");
+            String state = p == null ? "" : p.live ? "EN VIVO" : "AHORA";
+            on.setText(star ? (state.isEmpty() ? "★" : "★  " + state) : state);
             top.addView(on);
         }
         col.addView(top);
@@ -394,6 +636,7 @@ public class LiveActivity extends Activity {
             }
         });
         card.setOnClickListener(v -> Live.open(this, ch));
+        card.setOnKeyListener(this::onCardKey);
         return card;
     }
 

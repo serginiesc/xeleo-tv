@@ -168,6 +168,16 @@ final class Sports {
         nextGameAt = 0;
     }
 
+    /** Drops what was fetched for the old settings (after a restore). */
+    static void forget() {
+        synchronized (CACHE) {
+            CACHE.clear();
+            FETCHED.clear();
+        }
+        nextGame = null;
+        nextGameAt = 0;
+    }
+
     static void setTeam(Context c, String leagueKey, Team t) {
         prefs(c).edit().putString("team_league", leagueKey).putString("team_id", t.id).putString("team_abbr", t.abbr)
                 .putString("team_name", t.name).putString("team_short", t.shortName).putInt("team_color", t.color)
@@ -254,7 +264,8 @@ final class Sports {
         String date = new SimpleDateFormat("yyyyMMdd", Locale.ROOT).format(new Date());
         for (String path : l.paths) {
             try {
-                JSONObject d = get("https://site.api.espn.com/apis/site/v2/sports/" + path + "/scoreboard?dates=" + date);
+                JSONObject d = getSaved("https://site.api.espn.com/apis/site/v2/sports/" + path + "/scoreboard?dates=" + date,
+                        "espn-" + path.replace('/', '_') + ".json");
                 JSONArray events = d.optJSONArray("events");
                 if (events == null) continue;
                 for (int i = 0; i < events.length(); i++) {
@@ -433,6 +444,35 @@ final class Sports {
         if (url == null || !url.contains("espncdn.com/")) return url;
         String path = url.substring(url.indexOf("espncdn.com/") + "espncdn.com".length());
         return "https://a.espncdn.com/combiner/i?img=" + path + "&w=" + px + "&h=" + px;
+    }
+
+    /** Where today's answers are kept, so Home still has the day's games while the TV has no internet. */
+    private static java.io.File dir;
+
+    static void init(Context c) {
+        if (dir == null) dir = c.getApplicationContext().getFilesDir();
+    }
+
+    /** get, keeping a copy of the answer; without network, the copy if it is from today. */
+    private static JSONObject getSaved(String url, String name) throws Exception {
+        java.io.File f = dir == null ? null : new java.io.File(dir, name);
+        try {
+            JSONObject d = get(url);
+            if (f != null) {
+                try (java.io.FileOutputStream out = new java.io.FileOutputStream(f)) {
+                    out.write(d.toString().getBytes("UTF-8"));
+                }
+            }
+            return d;
+        } catch (Exception e) {
+            if (f == null || !f.exists() || !sameDay(f.lastModified(), System.currentTimeMillis())) throw e;
+            try (InputStream in = new java.io.FileInputStream(f)) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
+                return new JSONObject(out.toString("UTF-8"));
+            }
+        }
     }
 
     static JSONObject get(String url) throws Exception {

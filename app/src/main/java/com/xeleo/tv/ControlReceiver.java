@@ -10,6 +10,9 @@ import android.content.Intent;
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SLEEP_TIMER --ei minutes 30
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.WEATHER_PREVIEW --ei code 61
  * (code -1 goes back to the real weather; WMO codes: 0 clear, 2 clouds, 3 overcast, 45 fog, 61 rain, 71 snow, 95 storm)
+ *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.BACKUP    (writes the settings file, see Backup)
+ *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.RESTORE   (puts them back from it)
+ *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST   (a reminder card in a few seconds)
  */
 public class ControlReceiver extends BroadcastReceiver {
 
@@ -27,6 +30,24 @@ public class ControlReceiver extends BroadcastReceiver {
             Weather.previewCode = intent.getIntExtra("code", -1);
             context.sendBroadcast(new Intent(REFRESH).setPackage(context.getPackageName()));
             setResultData("weather preview " + Weather.previewCode);
+        } else if ("com.xeleo.tv.BACKUP".equals(action)) {
+            try {
+                setResultData(Backup.save(context));
+            } catch (Exception e) {
+                setResultData("backup failed: " + e);
+            }
+        } else if ("com.xeleo.tv.RESTORE".equals(action)) {
+            try {
+                boolean ok = Backup.restore(context);
+                context.sendBroadcast(new Intent(REFRESH).setPackage(context.getPackageName()).putExtra("all", true));
+                setResultData(ok ? "restored" : "no backup at " + Backup.file(context));
+            } catch (Exception e) {
+                setResultData("restore failed: " + e);
+            }
+        } else if ("com.xeleo.tv.REMINDER_TEST".equals(action)) {
+            Reminders.add(context, "test-" + System.currentTimeMillis(), "Programa de prueba", "XELEO TV", "",
+                    System.currentTimeMillis() + Reminders.AHEAD_MS + 5_000);
+            setResultData("reminder in a few seconds");
         }
     }
 }

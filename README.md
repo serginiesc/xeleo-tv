@@ -18,9 +18,13 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 |---|---|
 | ![Menú rápido con Deportes y En vivo](docs/screenshots/menu-rapido.jpg) | ![Todas las apps, con palomita en las que están en el inicio](docs/screenshots/todas-las-apps.jpg) |
 
-| Aviso sobre otra app | Protector de pantalla |
+| Aviso sobre otra app | Mantener OK en un canal |
 |---|---|
-| ![Aviso de anotación de los Chiefs encima de otra app](docs/screenshots/aviso.jpg) | ![Protector de pantalla con reloj, clima y canción](docs/screenshots/protector.jpg) |
+| ![Aviso de anotación de los Chiefs encima de otra app](docs/screenshots/aviso.jpg) | ![Menú de un canal: Mis canales, ocultar y recordar el siguiente programa](docs/screenshots/en-vivo-menu.jpg) |
+
+<p align="center">
+  <img src="docs/screenshots/protector.jpg" width="480" alt="Protector de pantalla con reloj, clima y canción">
+</p>
 
 ## Qué trae
 
@@ -56,19 +60,33 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 - **Panel del partido:** OK sobre un partido de "Hoy" abre marcador por periodo, líderes, comparativa de
   equipos, la tabla de su grupo y el próximo partido. ◀ ▶ pasan a los otros partidos; mientras se juega se
   actualiza cada 30 s. Si el partido va por una app de la tele (Prime Video, Disney+…), trae el botón para verlo.
-- **Avisos** encima de cualquier app al empezar, al anotar y al terminar. Se pueden apagar, por si ves el partido
-  con retraso y no quieres enterarte antes.
+- **Avisos** encima de cualquier app 15 minutos antes, al empezar, al anotar y al terminar. Se pueden apagar, por
+  si ves el partido con retraso y no quieres enterarte antes.
 - Datos de ESPN (servicio público sin clave, no oficial: puede cambiar).
 
 ### En vivo (menú rápido → En vivo, apagado de fábrica)
 
-- Una pestaña con los **canales gratis de Pluto TV** en filas: Destacados (TV abierta mexicana, noticias,
-  NFL Channel…), Noticias, Deportes, Películas, Series, Novelas y más.
+- Una pestaña con los **canales gratis de Pluto TV**, con un botón por categoría y cuántos canales tiene
+  ("Noticias · 7", "Deportes · 10"…). Basta pasar por un botón para ver sus canales.
+- **Mis canales:** el primer botón. De fábrica trae TV abierta mexicana, noticias y NFL Channel; deja presionado
+  OK sobre cualquier canal para agregarlo o quitarlo (los tuyos llevan ★).
+- **Ocultar canales** que no te interesan, con el mismo OK sostenido; quedan en el botón "Ocultos" por si los
+  quieres de vuelta.
+- **Recordatorios:** en ese mismo menú, "Recordar" el siguiente programa del canal; 5 minutos antes sale un aviso
+  encima de lo que estés viendo.
 - Arriba, una **vista previa** del canal seleccionado: imagen, programa, descripción y cuánto falta.
 - OK abre el canal en la app **Pluto TV** (instálala desde Play Store; si no está, XELEO te lleva ahí). XELEO
   solo muestra la guía, el video lo pone Pluto. La guía se precarga desde el inicio, así que la pestaña abre
   al instante.
 - Guía de Pluto TV (pública, sin clave, no oficial: puede cambiar).
+
+### Sin internet y al reinstalar
+
+- **Sin internet** (por ejemplo, la tele recién prendida y el Wi‑Fi aún conectando), el inicio muestra los partidos
+  del día, el clima y la guía de En vivo que tenía guardados, y los actualiza en cuanto hay red.
+- **Respaldo de ajustes:** tu nombre, ciudad, apps del inicio, Deportes, Mis canales y recordatorios se guardan en
+  un archivo. `install.sh` lo copia a la computadora antes de instalar y lo regresa si la instalación fue desde
+  cero; también entra en el respaldo de Google de la tele.
 
 ## Instalar
 
@@ -77,7 +95,8 @@ desarrollador → **Depuración USB** activada. Busca la IP de la tele en Ajuste
 
 ### Con un APK ya hecho
 
-Si alguien te pasó `XELEO-TV.apk`, con [adb](https://developer.android.com/tools/releases/platform-tools)
+Descarga `XELEO-TV.apk` de [Releases](https://github.com/serginiesc/xeleo-tv/releases/latest) (GitHub lo compila
+solo con cada cambio) o usa el que te pasaron. Luego, con [adb](https://developer.android.com/tools/releases/platform-tools)
 (cambia la IP por la de tu tele; la tele pregunta "¿Permitir depuración USB?": acepta). Se instala con
 `pm install` porque en Android 14 `adb install` se queda esperando una confirmación en pantalla; en Git Bash de
 Windows, corre antes `export MSYS_NO_PATHCONV=1`.
@@ -102,7 +121,13 @@ En la computadora (Git Bash en Windows), con JDK 17 y el SDK de Android:
 ./install.sh 192.168.1.50
 ```
 
-El script compila, instala y deja XELEO TV como inicio, protector de pantalla y servicio del control.
+El script compila, instala y deja XELEO TV como inicio, protector de pantalla y servicio del control. Antes de
+instalar guarda tus ajustes en `respaldo-tv.json` y, si tuvo que instalar desde cero (por ejemplo, si la versión
+anterior estaba firmada con otra llave), los regresa solo. También sirve con el emulador:
+`./install.sh emulator-5554`.
+
+Las versiones van firmadas con la llave de XELEO TV si existe `keystore.properties` (no está en el repo); si no,
+con la llave de depuración de tu computadora.
 
 ### En los dos casos
 
@@ -129,10 +154,21 @@ clima), **Deportes** (ligas y tu equipo) y **En vivo**, si los quieres.
   (61 lluvia, 95 tormenta, 45 neblina, 71 nieve, 2 nubes, -1 el clima real).
 - **Ver un aviso de partido de ejemplo:**
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SPORTS_TEST`
+- **Ver un recordatorio de ejemplo** (sale en unos segundos):
+  `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST`
+- **Guardar o restaurar los ajustes a mano:** `-a com.xeleo.tv.BACKUP` escribe
+  `/sdcard/Android/data/com.xeleo.tv/files/xeleo-respaldo.json`; `-a com.xeleo.tv.RESTORE` los toma de ahí.
+
+## APK automático (para quien mantiene el repo)
+
+`.github/workflows/apk.yml` compila el APK con cada cambio en `main` y lo publica como la versión "ultima" en
+Releases, firmado con la llave de XELEO TV. La llave vive en los secretos del repo: `XELEO_KEYSTORE_B64` (el
+`.jks` en base64), `XELEO_KEYSTORE_PASSWORD`, `XELEO_KEY_ALIAS` y `XELEO_KEY_PASSWORD`. Sin ellos, la compilación
+avisa y se detiene. El número de versión es la cantidad de commits (1.12, 1.13…).
 
 ## Notas
 
-- Java puro, sin librerías. `minSdk 26`, `targetSdk 34`. El APK pesa unos 150 KB.
+- Java puro, sin librerías. `minSdk 26`, `targetSdk 34`. El APK pesa unos 160 KB.
 - La app necesita acceso a notificaciones (solo para saber qué se está reproduciendo) y un servicio de
   accesibilidad (botón Inicio largo, temporizador, reinicio, recientes y avisos de partidos); `install.sh` los
   activa.

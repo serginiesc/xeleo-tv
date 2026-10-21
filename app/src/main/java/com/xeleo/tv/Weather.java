@@ -30,9 +30,9 @@ final class Weather {
 
     private Weather() {}
 
-    /** The network just came up: if there is no weather yet, the next update fetches at once. */
+    /** The network just came up: if there is no fresh weather yet, the next update fetches at once. */
     static void networkAvailable() {
-        if (line == null) lastAttempt = 0;
+        if (line == null || saved) lastAttempt = 0;
     }
 
     /** Forget the cached weather (the place changed); the next update fetches at once. */
@@ -66,12 +66,13 @@ final class Weather {
             view.setVisibility(android.view.View.GONE);
             return;
         }
+        if (line == null) restore(context);   // after a restart: the last weather, until a fresh one comes
         if (line != null) {
             view.setText(small ? compact : line);
             view.setVisibility(android.view.View.VISIBLE);
         }
         long now = System.currentTimeMillis();
-        long wait = line == null ? RETRY_MS : REFRESH_MS;
+        long wait = line == null || saved ? RETRY_MS : REFRESH_MS;
         if (fetching || (lastAttempt != 0 && now - lastAttempt < wait)) return;
         fetching = true;
         lastAttempt = now;
@@ -89,10 +90,28 @@ final class Weather {
                 fetching = false;
                 if (text == null) return;
                 line = text;
+                saved = false;
+                context.getSharedPreferences("weather_cache", Context.MODE_PRIVATE).edit().putString("line", line)
+                        .putString("compact", compact).putInt("code", code).putLong("at", System.currentTimeMillis())
+                        .putString("place", lat + "," + lon).apply();
                 view.setText(small ? compact : line);
                 view.setVisibility(android.view.View.VISIBLE);
             });
         }, "weather").start();
+    }
+
+    /** True while the line shown is the saved one (no fresh answer yet since the restart). */
+    private static boolean saved;
+
+    /** The weather saved by the last fetch, if it is from the last six hours and for the same place. */
+    private static void restore(Context c) {
+        android.content.SharedPreferences p = c.getSharedPreferences("weather_cache", Context.MODE_PRIVATE);
+        String place = Profile.latitude(c) + "," + Profile.longitude(c);
+        if (System.currentTimeMillis() - p.getLong("at", 0) > 6 * 3600_000L || !place.equals(p.getString("place", ""))) return;
+        line = p.getString("line", null);
+        compact = p.getString("compact", null);
+        if (code < 0) code = p.getInt("code", -1);
+        saved = line != null;
     }
 
     private static String fetch(String lat, String lon, String city) throws Exception {
