@@ -49,6 +49,14 @@
             android:windowSoftInputMode="adjustPan|stateHidden"
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
 
+        <!-- Quick settings > Deportes: Sports mode, leagues, your team and game alerts. -->
+        <activity
+            android:name=".SportsSettingsActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+
         <!-- Quick settings panel; its own task, so the app behind keeps playing. -->
         <activity
             android:name=".QuickSettingsActivity"
@@ -104,6 +112,7 @@
             <intent-filter>
                 <action android:name="com.xeleo.tv.SLEEP_TIMER" />
                 <action android:name="com.xeleo.tv.WEATHER_PREVIEW" />
+                <action android:name="com.xeleo.tv.SPORTS_TEST" />
             </intent-filter>
         </receiver>
     </application>

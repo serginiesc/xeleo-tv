@@ -31,7 +31,7 @@ public class SceneryDream extends DreamService {
     private PrecipView precip;
     private AmbientView ambient;
     private LinearLayout block;
-    private TextView weather;
+    private TextView weather, game;
     private Scenery.Phase phase;
     private Scenery.Kind kind;
     private double lat, lon;
@@ -40,6 +40,7 @@ public class SceneryDream extends DreamService {
         @Override
         public void run() {
             Weather.update(SceneryDream.this, weather);
+            showGame();
             paintScenery();
             drift();
             handler.postDelayed(this, TICK_MS);
@@ -96,6 +97,14 @@ public class SceneryDream extends DreamService {
         weather.setPadding((int) (6 * d), (int) (8 * d), 0, 0);
         weather.setVisibility(View.GONE);
         block.addView(weather);
+        game = new TextView(this);
+        game.setTextSize(18);
+        game.setTypeface(medium);
+        game.setTextColor(0xFFFFFFFF);
+        game.setShadowLayer(8 * d, 0, 1 * d, 0x99000000);
+        game.setPadding((int) (6 * d), (int) (10 * d), 0, 0);
+        game.setVisibility(View.GONE);
+        block.addView(game);
         NowPlayingView player = new NowPlayingView(this, false, regular, medium);
         player.hideControls();
         LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(-2, -2);
@@ -109,6 +118,7 @@ public class SceneryDream extends DreamService {
     public void onDreamingStarted() {
         super.onDreamingStarted();
         Weather.update(this, weather);
+        showGame();
         paintScenery();
         block.post(this::drift);
         handler.postDelayed(tick, TICK_MS);
@@ -134,6 +144,22 @@ public class SceneryDream extends DreamService {
         int w = Math.max(dm.widthPixels, dm.heightPixels), h = Math.min(dm.widthPixels, dm.heightPixels);
         Bitmap bmp = Scenery.paint(p, k, w, h, false);
         scenery.setImageBitmap(bmp);
+    }
+
+    /** Your team's game today: kickoff time, live score or final. */
+    private void showGame() {
+        Sports.load(this, (today, mine, next) -> {
+            String abbr = Sports.teamAbbr(this);
+            if (mine == null || mine.side(abbr) == null) {
+                game.setVisibility(View.GONE);
+                return;
+            }
+            Sports.Team me = mine.side(abbr), them = mine.other(abbr);
+            game.setText(mine.live() || mine.done()
+                    ? me.abbr + "  " + me.score + " – " + them.score + "  " + them.abbr + "  ·  " + mine.detail
+                    : "Hoy: " + Sports.teamShort(this) + " vs " + them.shortName + "  ·  " + Sports.when(this, mine.start));
+            game.setVisibility(View.VISIBLE);
+        });
     }
 
     /** Moves the clock block to a random spot that keeps it on screen, with a slow glide. */

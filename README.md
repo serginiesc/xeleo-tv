@@ -30,6 +30,11 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
   imagen, Bluetooth, sonido, accesibilidad, **temporizador para dormir** (15/30/60/90 min), apps, Personalizar y
   **Reiniciar**.
 - **Protector de pantalla** a juego: paisaje, reloj grande que se mueve poco a poco, clima y la canción.
+- **Modo Sports** (menú rápido → Deportes): una fila "Hoy" con los partidos del día de las ligas que elijas
+  (NFL, Liga MX, selecciones, NBA, MLB) con marcador en vivo. El día que juega tu equipo, el inicio se pinta con
+  sus colores, muestra su logo, la hora, el canal y la cuenta regresiva, y festeja si gana. Avisos opcionales
+  sobre cualquier app al empezar, al anotar y al terminar (se pueden apagar si ves el partido con retraso).
+  Datos de ESPN (servicio público sin clave, no oficial: puede cambiar).
 
 ## Instalar
 
@@ -62,6 +67,8 @@ sea suya (`adb shell dumpsys wifi | grep -o 'cname=[^ ]*'`): si lo es, olvida la
 - **Probar otro clima en el paisaje** (para ver cómo se ve):
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.WEATHER_PREVIEW --ei code 61`
   (61 lluvia, 95 tormenta, 45 neblina, 71 nieve, 2 nubes, -1 el clima real).
+- **Ver un aviso de partido de ejemplo:**
+  `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SPORTS_TEST`
 
 ## Notas
 

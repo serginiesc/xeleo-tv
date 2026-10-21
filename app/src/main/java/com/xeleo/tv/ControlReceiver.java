@@ -21,6 +21,8 @@ public class ControlReceiver extends BroadcastReceiver {
         if ("com.xeleo.tv.SLEEP_TIMER".equals(action)) {
             boolean ok = XeleoService.setSleepTimer(intent.getIntExtra("minutes", 0));
             setResultData(ok ? "sleep timer set" : "XeleoService is not running");
+        } else if ("com.xeleo.tv.SPORTS_TEST".equals(action)) {
+            setResultData(XeleoService.testAlert() ? "sample alert shown" : "XeleoService is not running");
         } else if ("com.xeleo.tv.WEATHER_PREVIEW".equals(action)) {
             Weather.previewCode = intent.getIntExtra("code", -1);
             context.sendBroadcast(new Intent(REFRESH).setPackage(context.getPackageName()));

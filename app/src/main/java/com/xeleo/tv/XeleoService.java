@@ -25,6 +25,22 @@ import java.util.Map;
 public class XeleoService extends AccessibilityService {
 
     private static XeleoService running;
+    private GameAlerts alerts;
+    /** The app on screen now, from window changes; Home skips game alerts (it shows the game itself). */
+    private volatile String foreground = "";
+
+    static boolean homeOnScreen() {
+        XeleoService s = running;
+        return s != null && s.getPackageName().equals(s.foreground);
+    }
+
+    /** ControlReceiver SPORTS_TEST: a sample alert card, to see how it looks. */
+    static boolean testAlert() {
+        XeleoService s = running;
+        if (s == null || s.alerts == null) return false;
+        s.alerts.test();
+        return true;
+    }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     /** When the TV goes to sleep, in System.currentTimeMillis(); 0 when no timer is set. */
@@ -68,12 +84,15 @@ public class XeleoService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         running = this;
+        alerts = new GameAlerts(this);
     }
 
     @Override
     public boolean onUnbind(Intent intent) {
         handler.removeCallbacks(sleep);
         sleepAt = 0;
+        if (alerts != null) alerts.stop();
+        alerts = null;
         running = null;
         return super.onUnbind(intent);
     }
@@ -97,6 +116,7 @@ public class XeleoService extends AccessibilityService {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
+        if (!"com.android.systemui".equals(pkg)) foreground = pkg;
         if (pkg.equals(lastApp) || pkg.equals(getPackageName())) return;
         Boolean app = launchable.get(pkg);
         if (app == null) {

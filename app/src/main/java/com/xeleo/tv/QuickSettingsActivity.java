@@ -92,6 +92,8 @@ public class QuickSettingsActivity extends Activity {
         View timer = addTile(tiles, R.drawable.ic_timer, "Temporizador", timerLabel(), null);
         timer.setOnClickListener(v -> cycleSleepTimer(v));
         addTile(tiles, R.drawable.ic_apps, "Apps", null, new Intent(Settings.ACTION_APPLICATION_SETTINGS));
+        addTile(tiles, R.drawable.ic_sports, "Deportes", !Sports.enabled(this) ? "Apagado"
+                : Sports.teamShort(this).isEmpty() ? "Encendido" : Sports.teamShort(this), new Intent(this, SportsSettingsActivity.class));
         addTile(tiles, R.drawable.ic_person, "Personalizar", Profile.tvName(this), new Intent(this, ProfileActivity.class));
         View restart = addTile(tiles, R.drawable.ic_power, "Reiniciar", "Apagar o reiniciar", null);
         restart.setOnClickListener(v -> {
@@ -229,9 +231,9 @@ public class QuickSettingsActivity extends Activity {
 
         GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
         lp.width = dp(119);
-        lp.height = dp(53);
+        lp.height = dp(48);
         int col = grid.getChildCount() % 2;
-        lp.setMargins(col == 0 ? 0 : dp(3), 0, col == 0 ? dp(3) : 0, dp(7));
+        lp.setMargins(col == 0 ? 0 : dp(3), 0, col == 0 ? dp(3) : 0, dp(6));
         grid.addView(tile, lp);
         return tile;
     }

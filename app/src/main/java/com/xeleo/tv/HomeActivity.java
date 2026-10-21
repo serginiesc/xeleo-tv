@@ -80,6 +80,13 @@ public class HomeActivity extends Activity {
     private GridLayout appsGrid;
     private View firstCard;
     private LinearLayout recentsRow;
+    private TextView tagline;
+    private SportsStripView sports;
+    private View teamTint;
+    private ImageView teamLogo;
+    private ConfettiView confetti;
+    /** Your team's game today and its next one (Sports mode). */
+    private Sports.Game myGame, nextGame;
     private final List<App> apps = new ArrayList<>();
     /** The card being moved (hold OK on a card in the row), or null. */
     private View moving;
@@ -126,6 +133,7 @@ public class HomeActivity extends Activity {
         @Override
         public void run() {
             updateGreeting();
+            refreshSports();
             Weather.update(HomeActivity.this, weather);
             updateScenery(true);
             handler.postDelayed(this, 60_000);
@@ -153,6 +161,10 @@ public class HomeActivity extends Activity {
         root.addView(ambient, new FrameLayout.LayoutParams(-1, -1));
         precip = new PrecipView(this);
         root.addView(precip, new FrameLayout.LayoutParams(-1, -1));
+        // Game day: a wash of your team's colour over the sky.
+        teamTint = new View(this);
+        teamTint.setVisibility(View.GONE);
+        root.addView(teamTint, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
@@ -162,13 +174,22 @@ public class HomeActivity extends Activity {
 
         page.addView(topBar());
 
+        teamLogo = new ImageView(this);
+        teamLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        teamLogo.setVisibility(View.GONE);
+        LinearLayout.LayoutParams tlogo = new LinearLayout.LayoutParams(dp(56), dp(56));
+        tlogo.gravity = Gravity.CENTER_HORIZONTAL;
+        tlogo.topMargin = dp(6);
+        tlogo.bottomMargin = -dp(20);
+        page.addView(teamLogo, tlogo);
+
         greeting = text(46, TEXT, medium);
         greeting.setGravity(Gravity.CENTER);
         greeting.setShadowLayer(dp(12), 0, dp(2), 0x80000000);
         LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(-1, -2);
         glp.topMargin = dp(34);
         page.addView(greeting, glp);
-        TextView tagline = text(16, TEXT_DIM, regular);
+        tagline = text(16, TEXT_DIM, regular);
         tagline.setText("Relájate  ·  Mira  ·  Explora");
         tagline.setGravity(Gravity.CENTER);
         tagline.setLetterSpacing(0.06f);
@@ -176,6 +197,11 @@ public class HomeActivity extends Activity {
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(-1, -2);
         tlp.topMargin = dp(8);
         page.addView(tagline, tlp);
+
+        sports = new SportsStripView(this, regular, medium);
+        LinearLayout.LayoutParams sslp = new LinearLayout.LayoutParams(-1, -2);
+        sslp.topMargin = dp(10);
+        page.addView(sports, sslp);
 
         recentsRow = new LinearLayout(this);
         recentsRow.setGravity(Gravity.CENTER);
@@ -212,6 +238,8 @@ public class HomeActivity extends Activity {
         appsOverlay = appsOverlay();
         appsOverlay.setVisibility(View.GONE);
         root.addView(appsOverlay, new FrameLayout.LayoutParams(-1, -1));
+        confetti = new ConfettiView(this);
+        root.addView(confetti, new FrameLayout.LayoutParams(-1, -1));
 
         setContentView(root);
         updateScenery(false);
@@ -238,6 +266,7 @@ public class HomeActivity extends Activity {
         buildRecents();
         buildGrid();
         updateGreeting();
+        refreshSports();
         brandName.setText(Profile.tvName(this));   // may have changed in Personalizar
         lat = Profile.lat(this);
         lon = Profile.lon(this);
@@ -472,7 +501,67 @@ public class HomeActivity extends Activity {
         int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         String part = h < 5 ? "Buenas noches" : h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
         String owner = Profile.userName(this);
-        greeting.setText(owner.isEmpty() ? part : part + ", " + owner);
+        String hello = owner.isEmpty() ? part : part + ", " + owner;
+        String line = "Relájate  ·  Mira  ·  Explora";
+        String abbr = Sports.teamAbbr(this), team = Sports.teamShort(this);
+        if (myGame != null && myGame.side(abbr) != null) {
+            Sports.Team me = myGame.side(abbr), them = myGame.other(abbr);
+            if (myGame.done()) {
+                boolean won = me.winner;
+                hello = won ? "¡Ganaron " + withArticle(team) + "!" : (isTie(me, them) ? "Empate " + withArticle(team)
+                        : "Perdieron " + withArticle(team));
+                line = me.abbr + "  " + me.score + " – " + them.score + "  " + them.abbr + "  ·  " + myGame.detail;
+            } else if (myGame.live()) {
+                hello = "¡Juegan " + withArticle(team) + "!";
+                line = me.abbr + "  " + me.score + " – " + them.score + "  " + them.abbr + "  ·  " + myGame.detail;
+            } else {
+                hello = "¡Hoy juegan " + withArticle(team) + "!";
+                String cd = Sports.countdown(myGame.start);
+                line = "vs " + them.shortName + "  ·  " + Sports.when(this, myGame.start)
+                        + (myGame.broadcast.isEmpty() ? "" : "  ·  " + myGame.broadcast) + (cd.isEmpty() ? "" : "  ·  " + cd);
+            }
+        } else if (nextGame != null && nextGame.side(abbr) != null) {
+            line = "Próximo: " + team + " vs " + nextGame.other(abbr).shortName + "  ·  " + Sports.when(this, nextGame.start);
+        }
+        greeting.setText(hello);
+        tagline.setText(line);
+    }
+
+    /** "los Chiefs", but "Portugal" or "México" without an article. */
+    private static String withArticle(String team) {
+        return Sports.NATIONS_NAMES.contains(team) ? team : "los " + team;
+    }
+
+    private static boolean isTie(Sports.Team a, Sports.Team b) {
+        return !a.winner && !b.winner && a.score.equals(b.score);
+    }
+
+    // ---------------------------------------------------------------- sports mode
+
+    private void refreshSports() {
+        Sports.load(this, (today, mine, next) -> {
+            if (isFinishing()) return;
+            myGame = mine;
+            nextGame = next;
+            sports.show(today, Sports.teamAbbr(this), Sports.teamColor(this));
+            boolean gameDay = mine != null;
+            teamLogo.setVisibility(gameDay ? View.VISIBLE : View.GONE);
+            teamTint.setVisibility(gameDay ? View.VISIBLE : View.GONE);
+            if (gameDay) {
+                Logos.into(teamLogo, Sports.teamLogo(this), 128);
+                int c = Sports.teamColor(this);
+                teamTint.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                        new int[]{(c & 0x00FFFFFF) | 0x59000000, (c & 0x00FFFFFF) | 0x1A000000, 0x00000000}));
+                Sports.Team me = mine.side(Sports.teamAbbr(this));
+                // A win gets confetti once per game, the first time Home shows the final.
+                android.content.SharedPreferences seen = getSharedPreferences("sports_seen", MODE_PRIVATE);
+                if (mine.done() && me != null && me.winner && !mine.id.equals(seen.getString("celebrated", ""))) {
+                    seen.edit().putString("celebrated", mine.id).apply();
+                    confetti.burst(Sports.teamColor(this), Sports.teamAltColor(this));
+                }
+            }
+            updateGreeting();
+        });
     }
 
     // ---------------------------------------------------------------- apps
