@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">XELEO TV</string>
+    <string name="dream_name">Paisaje y reloj</string>
+    <string name="service_name">XELEO TV: control y temporizador</string>
+    <string name="service_description">Abre el menú rápido al dejar presionado Inicio, apaga la tele con el temporizador, abre el menú de reinicio y recuerda las apps recientes. No lee el contenido de la pantalla.</string>
+</resources>

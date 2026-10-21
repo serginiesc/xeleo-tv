@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TV banner (320x180): night sky with the sparkle and two hills. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp" android:height="180dp"
+    android:viewportWidth="320" android:viewportHeight="180">
+    <path android:fillColor="#FF0C1430" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#FF1B2A52" android:pathData="M0,140C60,110 110,120 160,135C220,152 270,118 320,128V180H0Z" />
+    <path android:fillColor="#FF080C1A" android:pathData="M0,160C70,140 120,150 180,160C240,170 280,150 320,155V180H0Z" />
+    <path android:fillColor="#FF9B72CB"
+        android:pathData="M160,30C163,57 182,76 210,79C182,82 163,101 160,128C157,101 138,82 110,79C138,76 157,57 160,30Z" />
+</vector>

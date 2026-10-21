@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Defaults for a new install. Names and the weather's city can be changed on the TV: quick settings > Personalizar. -->
+<resources>
+    <!-- Apps first in the row, in this order. Missing ones are skipped; the order can also be changed on the TV
+         (hold OK on a card). -->
+    <string-array name="dock_apps">
+        <item>com.netflix.ninja</item>
+        <item>com.amazon.amazonvideo.livingroom</item>
+        <item>com.google.android.youtube.tv</item>
+        <item>com.spotify.tv.android</item>
+    </string-array>
+    <!-- Apps never shown. -->
+    <string-array name="hidden_apps">
+    </string-array>
+    <!-- The name in the greeting; the TV is called "<name> TV". Empty: no name, and the TV is "Mi TV". -->
+    <string name="greeting_name" translatable="false"></string>
+    <!-- Weather and sunrise/sunset place. -->
+    <string name="weather_city" translatable="false">Ciudad de México</string>
+    <string name="weather_latitude" translatable="false">19.4326</string>
+    <string name="weather_longitude" translatable="false">-99.1332</string>
+</resources>

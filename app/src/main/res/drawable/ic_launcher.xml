@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App icon: the XELEO sparkle on night blue. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FF0C1430" android:pathData="M12,0A12,12 0,1 1,12,24A12,12 0,1 1,12,0Z" />
+    <path android:fillColor="#FF9B72CB" android:pathData="M12,2C12.6,7.5 16.5,11.4 22,12C16.5,12.6 12.6,16.5 12,22C11.4,16.5 7.5,12.6 2,12C7.5,11.4 11.4,7.5 12,2Z" />
+</vector>
