@@ -4,6 +4,16 @@ Pantalla de inicio para el **onn 4K Streaming Box** (Google TV), sin anuncios ni
 aparece es lo que tú instalaste. Hecha y probada en un onn 4K con Google TV 14; debería funcionar en otros
 aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
+![Inicio de noche, con una estrella fugaz cruzando el cielo](docs/screenshots/inicio-noche.jpg)
+
+| De día, con nubes y pájaros | Protector de pantalla |
+|---|---|
+| ![Inicio de día con nubes y una parvada de pájaros](docs/screenshots/inicio-dia.jpg) | ![Protector de pantalla con reloj, clima y canción](docs/screenshots/protector.jpg) |
+
+<p align="center">
+  <img src="docs/screenshots/menu-rapido.jpg" width="300" alt="Menú rápido con reproductor, temporizador y Reiniciar">
+</p>
+
 ## Qué trae
 
 - **Paisaje que sigue la hora:** amanecer, día, atardecer y noche, calculados con la salida y puesta del sol de tu
