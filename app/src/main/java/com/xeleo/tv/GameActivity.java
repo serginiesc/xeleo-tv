@@ -172,7 +172,7 @@ public class GameActivity extends Activity {
         top.setGravity(Gravity.CENTER);
         content.addView(top, new LinearLayout.LayoutParams(-1, -2));
 
-        content.addView(header(g), new LinearLayout.LayoutParams(-1, dp(144)));
+        content.addView(header(g), new LinearLayout.LayoutParams(-1, dp(146)));
         content.addView(divider(), new LinearLayout.LayoutParams(-1, 1));
 
         LinearLayout body = new LinearLayout(this);
@@ -257,7 +257,7 @@ public class GameActivity extends Activity {
     private View lines(GameStats g) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(0, dp(8), 0, 0);
+        box.setPadding(0, dp(5), 0, 0);
         int n = g.periodHeads.length;
         int cell = n > 6 ? dp(17) : dp(26);
         for (int r = 0; r < 3; r++) {
@@ -277,7 +277,7 @@ public class GameActivity extends Activity {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(total ? dp(34) : cell, -2);
                 row.addView(c, lp);
             }
-            row.setPadding(0, dp(r == 0 ? 0 : 3), dp(34), 0);
+            row.setPadding(0, dp(r == 0 ? 0 : 2), dp(34), 0);
             box.addView(row);
         }
         return box;
