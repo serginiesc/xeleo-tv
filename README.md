@@ -1,5 +1,7 @@
 # XELEO TV para onn TV
 
+**Español** · [English](README.en.md)
+
 Pantalla de inicio para el **onn 4K Streaming Box** (Google TV), sin anuncios ni recomendaciones: todo lo que
 aparece es lo que tú instalaste. Hecha y probada en un onn 4K con Google TV 14; debería funcionar en otros
 aparatos con Google TV o Android TV, pero no se ha probado en ellos.
@@ -71,10 +73,11 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
   trae su botón con su último partido y su tabla.
 - **Día de partido:** el inicio se pinta con los colores de tu equipo y, a la derecha, pone una foto reciente de
   sus noticias en ESPN (cambia sola, sin notas tristes); si no hay ninguna, en la NFL un póster del QB titular en
-  los colores del equipo con su número detrás, y en las demás ligas un estadio dibujado en sus colores. En la mañana va suave; desde 3 horas antes, la cuenta
-  regresiva en grande; durante el juego, el marcador grande (se actualiza cada 30 s); si gana, "¡Ganaron!" con confeti hasta la mañana
-  siguiente. Si pierde, el inicio vuelve a la normalidad. OK sobre el marcador abre el panel del partido. La foto
-  se apaga en Ajustes > Deportes.
+  los colores del equipo con su número detrás, y en las demás ligas un estadio dibujado en sus colores (encendido
+  de noche y con el escudo). En la mañana va suave; desde 3 horas antes, la cuenta regresiva en grande; durante el
+  juego, el marcador grande (se actualiza cada 30 s); si gana, "¡Ganaron!" con confeti hasta la mañana siguiente.
+  Si pierde, el inicio vuelve a la normalidad. OK sobre el marcador abre el panel del partido. La foto se apaga en
+  Ajustes > Deportes.
 - **Panel del partido:** OK sobre un partido de "Hoy" abre marcador por periodo, líderes, comparativa de
   equipos, la tabla de su grupo y el próximo partido. ◀ ▶ pasan a los otros partidos; mientras se juega se
   actualiza cada 30 s.
@@ -121,6 +124,11 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
 ## Instalar
 
+Lo que se puede **sin computadora**: instalar el APK (con la app Downloader o una memoria USB), encender sus
+servicios en los ajustes de la tele (Accesibilidad → XELEO TV, Acceso especial de apps → Acceso a notificaciones,
+Sistema → Protector de pantalla) y actualizarlo desde Acerca de. Lo que **necesita computadora, una sola vez**:
+que XELEO sea lo que abre el botón Inicio. Google TV no tiene opción para cambiar el inicio, así que hace falta adb.
+
 Primero, en la tele: Ajustes → Sistema → Acerca de → presiona 7 veces *Compilación del SO*; luego Opciones de
 desarrollador → **Depuración USB** activada. Busca la IP de la tele en Ajustes → Red e Internet → tu red.
 
@@ -153,7 +161,7 @@ En la computadora (Git Bash en Windows), con JDK 17 y el SDK de Android:
 ```
 
 El script compila, instala y deja XELEO TV como inicio, protector de pantalla y servicio del control. Antes de
-instalar guarda tus ajustes en `respaldo-tv.json` y, si tuvo que instalar desde cero (por ejemplo, si la versión
+instalar guarda tus ajustes en `respaldo-tv-<tele>.json` y, si tuvo que instalar desde cero (por ejemplo, si la versión
 anterior estaba firmada con otra llave), los regresa solo. También sirve con el emulador:
 `./install.sh emulator-5554`.
 
@@ -202,10 +210,10 @@ avisa y se detiene. El número de versión es la cantidad de commits (1.12, 1.13
 
 ## Notas
 
-- Java puro, sin librerías. `minSdk 26`, `targetSdk 34`. El APK pesa unos 160 KB.
-- La app necesita acceso a notificaciones (solo para saber qué se está reproduciendo) y un servicio de
-  accesibilidad (botón Inicio largo, temporizador, reinicio, recientes y avisos de partidos); `install.sh` los
-  activa.
+- Java puro, sin librerías. `minSdk 26`, `targetSdk 34`. El APK pesa unos 170 KB.
+- La app necesita acceso a notificaciones (para saber qué se está reproduciendo y para el panel de
+  notificaciones) y un servicio de accesibilidad (el botón de ajustes del control, temporizador, reinicio,
+  recientes y avisos de partidos); `install.sh` los activa.
 - Fuente: [Outfit](https://github.com/Outfitio/Outfit-Fonts), licencia SIL OFL 1.1 (`docs/licencias/OFL-Outfit.txt`).
   Íconos: Material Icons de Google (Apache 2.0). Logos de equipos y canales, y las fotos del día de partido: de ESPN y
   Pluto TV, se descargan al usarse y no vienen en el repo.
