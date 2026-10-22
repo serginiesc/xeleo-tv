@@ -32,9 +32,13 @@ public class NotificationsActivity extends Activity {
     private static final int TEXT_DIM = 0xFFC4C7C5;
     private static final int DARK = 0xFF1F1F1F;
 
+    private static final int PANEL_W = 272;
+
     private float density;
     private Typeface regular, medium;
+    private ScrollView panel;
     private LinearLayout card;
+    private boolean closing;
     /** True from a long press until OK is released, so that release doesn't also open the notification. */
     private boolean swallowOk;
 
@@ -44,22 +48,50 @@ public class NotificationsActivity extends Activity {
         density = getResources().getDisplayMetrics().density;
         regular = Typeface.create("sans-serif", Typeface.NORMAL);
         medium = Typeface.create("sans-serif-medium", Typeface.NORMAL);
-        getWindow().setBackgroundDrawable(new ColorDrawable(0x99000000));
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        // The same panel as quick settings, on the right, sliding in.
         FrameLayout root = new FrameLayout(this);
-        ScrollView scroll = new ScrollView(this);
-        scroll.setVerticalScrollBarEnabled(false);
-        card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(24), dp(22), dp(24), dp(22));
+        View scrim = new View(this);
+        scrim.setBackgroundColor(0x8C000000);
+        scrim.setOnClickListener(v -> close());
+        root.addView(scrim, new FrameLayout.LayoutParams(-1, -1));
+        panel = new ScrollView(this);
+        panel.setVerticalScrollBarEnabled(false);
+        panel.setClipToPadding(false);
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(CARD);
         bg.setCornerRadius(dp(22));
-        card.setBackground(bg);
-        scroll.addView(card);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(520), -2, Gravity.CENTER);
-        lp.setMargins(0, dp(20), 0, dp(20));
-        root.addView(scroll, lp);
+        panel.setBackground(bg);
+        panel.setElevation(dp(20));
+        card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(18), dp(14), dp(14));
+        panel.addView(card);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(PANEL_W), -1, Gravity.END);
+        lp.setMargins(0, dp(16), dp(24), dp(16));
+        root.addView(panel, lp);
         setContentView(root);
+        // From the quick settings bell it takes the panel's place as it is; from anywhere else it slides in.
+        if (!getIntent().getBooleanExtra("instant", false)) {
+            panel.setTranslationX(dp(PANEL_W + 24));
+            panel.animate().translationX(0).setDuration(240).setInterpolator(new android.view.animation.DecelerateInterpolator(2.2f)).start();
+            scrim.setAlpha(0f);
+            scrim.animate().alpha(1f).setDuration(240).start();
+        }
+    }
+
+    private void close() {
+        if (closing) return;
+        closing = true;
+        panel.animate().translationX(dp(PANEL_W + 24)).setDuration(180).withEndAction(() -> {
+            finish();
+            overridePendingTransition(0, 0);
+        }).start();
+    }
+
+    @Override
+    public void onBackPressed() {
+        close();
     }
 
     @Override
@@ -78,13 +110,14 @@ public class NotificationsActivity extends Activity {
     /** Builds the list; focus goes to the row at keep (or the nearest one left). */
     private void show(int keep) {
         card.removeAllViews();
-        TextView title = text(20, Color.WHITE, medium);
+        TextView title = text(16, Color.WHITE, medium);
         title.setText("Notificaciones");
+        title.setPadding(dp(2), 0, 0, 0);
         card.addView(title);
         List<MediaListener.Item> items = MediaListener.list(this);
-        TextView hint = text(12, TEXT_DIM, regular);
+        TextView hint = text(9, TEXT_DIM, regular);
         hint.setText(items.isEmpty() ? "No hay notificaciones." : "OK la abre  ·  Mantén OK para borrarla");
-        hint.setPadding(0, dp(6), 0, dp(14));
+        hint.setPadding(dp(2), dp(5), 0, dp(12));
         card.addView(hint);
         View first = null;
         boolean anyClearable = false;
@@ -94,7 +127,7 @@ public class NotificationsActivity extends Activity {
             anyClearable |= i.clearable;
         }
         if (anyClearable) {
-            TextView all = text(13, TEXT, medium);
+            TextView all = text(9.5f, TEXT, medium);
             all.setText("Borrar todas");
             all.setGravity(Gravity.CENTER);
             all.setFocusable(true);
@@ -104,9 +137,9 @@ public class NotificationsActivity extends Activity {
             all.setOnClickListener(v -> {
                 for (MediaListener.Item i : items) if (i.clearable) MediaListener.dismiss(i.key);
             });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(38));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(28));
             lp.gravity = Gravity.END;
-            lp.topMargin = dp(6);
+            lp.topMargin = dp(2);
             card.addView(all, lp);
             if (first == null) first = all;
         }
@@ -125,37 +158,45 @@ public class NotificationsActivity extends Activity {
     private View row(MediaListener.Item i) {
         LinearLayout r = new LinearLayout(this);
         r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setPadding(dp(14), dp(10), dp(16), dp(10));
+        r.setPadding(dp(12), dp(9), dp(10), dp(9));
         r.setFocusable(true);
         r.setClickable(true);
         ImageView icon = new ImageView(this);
         icon.setImageDrawable(i.icon);
-        r.addView(icon, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(20), dp(20));
+        ilp.gravity = Gravity.TOP;
+        ilp.topMargin = dp(1);
+        r.addView(icon, ilp);
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setPadding(dp(14), 0, 0, 0);
-        TextView t = text(14, TEXT, medium);
+        col.setPadding(dp(10), 0, 0, 0);
+        TextView t = text(10.5f, TEXT, medium);
         t.setText(i.title.isEmpty() ? i.app : i.title);
         t.setSingleLine(true);
         t.setEllipsize(TextUtils.TruncateAt.END);
         col.addView(t);
-        TextView body = text(12, TEXT_DIM, regular);
+        TextView body = text(9, TEXT_DIM, regular);
         body.setText(i.text);
         body.setMaxLines(2);
         body.setEllipsize(TextUtils.TruncateAt.END);
-        body.setPadding(0, dp(4), 0, 0);
+        body.setPadding(0, dp(3), 0, 0);
         if (i.text.isEmpty()) body.setVisibility(View.GONE);
         col.addView(body);
-        TextView meta = text(10, TEXT_DIM, regular);
+        TextView meta = text(8, TEXT_DIM, regular);
         meta.setText(i.app + "  ·  " + DateUtils.getRelativeTimeSpanString(i.time, System.currentTimeMillis(),
                 DateUtils.MINUTE_IN_MILLIS));
-        meta.setPadding(0, dp(5), 0, 0);
+        meta.setPadding(0, dp(4), 0, 0);
+        meta.setSingleLine(true);
+        meta.setEllipsize(TextUtils.TruncateAt.END);
         col.addView(meta);
         r.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
         style(r, t, body, meta, false);
         r.setOnFocusChangeListener((v, f) -> style(r, t, body, meta, f));
         r.setOnClickListener(v -> {
-            if (MediaListener.open(i.key)) finish();
+            if (MediaListener.open(i.key)) {
+                finish();
+                overridePendingTransition(0, 0);
+            }
         });
         r.setOnKeyListener((v, keyCode, e) -> {
             boolean ok = keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER;
@@ -172,14 +213,14 @@ public class NotificationsActivity extends Activity {
             return false;
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.bottomMargin = dp(8);
+        lp.bottomMargin = dp(6);
         card.addView(r, lp);
         return r;
     }
 
     private void style(View r, TextView t, TextView body, TextView meta, boolean focused) {
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(14));
+        bg.setCornerRadius(dp(16));
         bg.setColor(focused ? FOCUS : TILE);
         r.setBackground(bg);
         t.setTextColor(focused ? DARK : TEXT);
@@ -189,11 +230,11 @@ public class NotificationsActivity extends Activity {
 
     private void styleButton(TextView b, boolean focused) {
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(19));
+        bg.setCornerRadius(dp(14));
         bg.setColor(focused ? FOCUS : TILE);
         b.setBackground(bg);
         b.setTextColor(focused ? DARK : TEXT);
-        b.setPadding(dp(18), 0, dp(18), 0);
+        b.setPadding(dp(14), 0, dp(14), 0);
     }
 
     private TextView text(float sp, int color, Typeface tf) {

@@ -187,7 +187,7 @@ public class QuickSettingsActivity extends Activity {
         bell.setContentDescription("Notificaciones");
         styleRound(bell, false);
         bell.setOnFocusChangeListener((v, f) -> styleRound(v, f));
-        bell.setOnClickListener(v -> open(new Intent(this, NotificationsActivity.class)));
+        bell.setOnClickListener(v -> open(new Intent(this, NotificationsActivity.class).putExtra("instant", true)));
         bellBox.addView(bell, new FrameLayout.LayoutParams(dp(30), dp(30)));
         int count = MediaListener.list(this).size();
         if (count > 0) {
