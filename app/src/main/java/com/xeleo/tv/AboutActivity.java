@@ -145,11 +145,12 @@ public class AboutActivity extends Activity {
             status.setText("Hay una versión nueva: " + Updater.latestName());
             button.setText("Actualizar");
             button.setVisibility(android.view.View.VISIBLE);
-            button.requestFocus();
+            button.post(button::requestFocus);   // after it is laid out, or the focus stays on the page
         } else {
             status.setText(Updater.current(this) > 0 ? "Tienes la versión más reciente." : "");
             button.setText("Buscar de nuevo");
             button.setVisibility(android.view.View.VISIBLE);
+            button.post(button::requestFocus);
         }
     }
 
