@@ -20,7 +20,7 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
 | Menú rápido | Todas las apps |
 |---|---|
-| ![Menú rápido con Deportes y En vivo](docs/screenshots/menu-rapido.jpg) | ![Todas las apps, con palomita en las que están en el inicio](docs/screenshots/todas-las-apps.jpg) |
+| ![Menú rápido con la campana de notificaciones, Deportes y En vivo](docs/screenshots/menu-rapido.jpg) | ![Todas las apps, con palomita en las que están en el inicio](docs/screenshots/todas-las-apps.jpg) |
 
 | Aviso sobre otra app | Mantener OK en un canal |
 |---|---|
