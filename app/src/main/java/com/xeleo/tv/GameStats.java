@@ -61,11 +61,12 @@ final class GameStats {
      */
     static GameStats load(Context c, String path, String leagueKey, String eventId, String broadcast) throws Exception {
         Sports.League league = Sports.league(leagueKey);
-        String myId = Sports.teamId(c);
+        // Your team in this game's league (one per league), for the side, the highlighted row and what's next.
+        Sports.MyTeam mine = Sports.myTeam(c, leagueKey);
+        String myId = mine == null ? "" : mine.id;
         boolean teamMode = eventId.isEmpty();
         if (teamMode) {
-            leagueKey = Sports.teamLeague(c);
-            league = Sports.league(leagueKey);
+            if (mine == null) throw new Exception("no team in " + leagueKey);
             path = league.paths[0];
             eventId = lastGame(path, league, myId);
         }
@@ -437,7 +438,7 @@ final class GameStats {
     private static void footer(Context c, JSONObject s, GameStats g, String leagueKey, String myId, long start) {
         boolean mine = !myId.isEmpty() && (g.left.id.equals(myId) || g.right.id.equals(myId));
         if (mine && !g.state.equals("pre")) {
-            Sports.Game next = Sports.nextGame(Sports.teamLeague(c), myId);
+            Sports.Game next = Sports.nextGame(leagueKey, myId);
             if (next != null && next.start > start) {
                 boolean home = next.home.id.equals(myId);
                 Sports.Team other = home ? next.away : next.home;

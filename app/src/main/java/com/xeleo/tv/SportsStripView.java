@@ -72,7 +72,13 @@ final class SportsStripView extends HorizontalScrollView {
         return super.dispatchKeyEvent(e);
     }
 
-    void show(List<Sports.Game> games, String myAbbr, int myColor) {
+    /** Your team in this game, if any. */
+    private static Sports.MyTeam ours(Sports.Game g, List<Sports.MyTeam> teams) {
+        for (Sports.MyTeam t : teams) if (g.leagueKey.equals(t.league) && g.side(t.abbr) != null) return t;
+        return null;
+    }
+
+    void show(List<Sports.Game> games, List<Sports.MyTeam> teams) {
         row.removeAllViews();
         if (games.isEmpty()) {
             setVisibility(GONE);
@@ -88,20 +94,24 @@ final class SportsStripView extends HorizontalScrollView {
         title.setShadowLayer(dp(6), 0, 0, 0x80000000);
         title.setPadding(0, 0, dp(10), 0);
         row.addView(title);
-        // What the game panel can page through with ◀ ▶: your team's chip (when it doesn't play today) and the games.
-        boolean myTeamPlays = false;
-        for (Sports.Game g : games) if (!myAbbr.isEmpty() && g.side(myAbbr) != null) myTeamPlays = true;
-        boolean teamChip = !myAbbr.isEmpty() && !myTeamPlays;
-        int count = Math.min(games.size(), 12) + (teamChip ? 1 : 0);
+        // What the game panel can page through with ◀ ▶: a chip for each of your teams that doesn't play today, then
+        // the games (your teams' first).
+        List<Sports.MyTeam> resting = new java.util.ArrayList<>();
+        for (Sports.MyTeam t : teams) {
+            boolean plays = false;
+            for (Sports.Game g : games) if (g.leagueKey.equals(t.league) && g.side(t.abbr) != null) plays = true;
+            if (!plays) resting.add(t);
+        }
+        int count = Math.min(games.size(), 12) + resting.size();
         String[] ids = new String[count], paths = new String[count], leagues = new String[count], casts = new String[count];
         int k = 0;
-        if (teamChip) {
-            ids[0] = "";
-            paths[0] = "";
-            leagues[0] = Sports.teamLeague(getContext());
-            casts[0] = "";
-            k = 1;
-            row.addView(teamChip(myColor, ids, paths, leagues, casts));
+        for (Sports.MyTeam t : resting) {
+            ids[k] = "";
+            paths[k] = "";
+            leagues[k] = t.league;
+            casts[k] = "";
+            row.addView(teamChip(t, ids, paths, leagues, casts, k));
+            k++;
         }
         for (Sports.Game g : games) {
             if (k == count) break;
@@ -110,7 +120,8 @@ final class SportsStripView extends HorizontalScrollView {
             leagues[k] = g.leagueKey;
             casts[k] = TextUtils.join(", ", g.channels);
             int at = k++;
-            View chip = chip(g, !myAbbr.isEmpty() && g.side(myAbbr) != null, myColor);
+            Sports.MyTeam mine = ours(g, teams);
+            View chip = chip(g, mine != null, mine != null ? mine.color : 0);
             chip.setOnClickListener(v -> GameActivity.open(getContext(), ids, paths, leagues, casts, at));
             row.addView(chip);
         }
@@ -159,7 +170,8 @@ final class SportsStripView extends HorizontalScrollView {
     }
 
     /** Your team when it doesn't play today: opens the panel on its last game and its standings. */
-    private View teamChip(int myColor, String[] ids, String[] paths, String[] leagues, String[] casts) {
+    private View teamChip(Sports.MyTeam t, String[] ids, String[] paths, String[] leagues, String[] casts, int at) {
+        int myColor = t.color;
         LinearLayout c = new LinearLayout(getContext());
         c.setGravity(Gravity.CENTER_VERTICAL);
         c.setPadding(dp(10), 0, dp(14), 0);
@@ -167,13 +179,13 @@ final class SportsStripView extends HorizontalScrollView {
         c.setClickable(true);
         ImageView iv = new ImageView(getContext());
         iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        Logos.into(iv, Sports.teamLogo(getContext()), 64);
+        Logos.into(iv, t.logo, 64);
         c.addView(iv, new LinearLayout.LayoutParams(dp(26), dp(26)));
         LinearLayout mid = new LinearLayout(getContext());
         mid.setOrientation(LinearLayout.VERTICAL);
         mid.setPadding(dp(8), 0, 0, 0);
         TextView name = text(14, 0xFFFFFFFF, medium);
-        name.setText(Sports.teamShort(getContext()));
+        name.setText(t.shortName.isEmpty() ? t.name : t.shortName);
         mid.addView(name);
         TextView what = text(11, 0xB3FFFFFF, regular);
         what.setText("Último partido y tabla");
@@ -188,7 +200,7 @@ final class SportsStripView extends HorizontalScrollView {
             style(c, name, what, true, myColor, f, false);
             v.animate().scaleX(f ? 1.06f : 1f).scaleY(f ? 1.06f : 1f).setDuration(120).start();
         });
-        c.setOnClickListener(v -> GameActivity.open(getContext(), ids, paths, leagues, casts, 0));
+        c.setOnClickListener(v -> GameActivity.open(getContext(), ids, paths, leagues, casts, at));
         return c;
     }
 

@@ -120,33 +120,104 @@ final class Sports {
                 new HashSet<>(java.util.Arrays.asList("nfl", "ligamx", "selecciones", "nba", "mlb"))));
     }
 
-    /** Your team: league key, ESPN team id and abbreviation; empty when none is picked. */
+    // ---------------------------------------------------------------- your teams, one per league
+
+    /** One of your teams, as saved under its league ("t.nfl.id", "t.nfl.abbr"…). */
+    static final class MyTeam {
+        String league = "", id = "", abbr = "", name = "", shortName = "", logo = "";
+        int color = 0xFF5E6874, alt = 0xFFFFFFFF;
+    }
+
+    /** The league of the team Home is following now: the one that plays soonest (set by load). */
+    private static volatile String focusLeague = "";
+
+    /** Your teams, in the leagues' order (at most one per league). */
+    static List<MyTeam> myTeams(Context c) {
+        migrate(c);
+        List<MyTeam> out = new ArrayList<>();
+        for (League l : LEAGUES) {
+            MyTeam t = myTeam(c, l.key);
+            if (t != null) out.add(t);
+        }
+        return out;
+    }
+
+    /** Your team in a league, or null. */
+    static MyTeam myTeam(Context c, String league) {
+        SharedPreferences p = prefs(c);
+        String k = "t." + league + ".";
+        String id = p.getString(k + "id", "");
+        if (id.isEmpty()) return null;
+        MyTeam t = new MyTeam();
+        t.league = league;
+        t.id = id;
+        t.abbr = p.getString(k + "abbr", "");
+        t.name = p.getString(k + "name", "");
+        t.shortName = p.getString(k + "short", t.name);
+        t.logo = p.getString(k + "logo", "");
+        t.color = p.getInt(k + "color", 0xFF5E6874);
+        t.alt = p.getInt(k + "alt", 0xFFFFFFFF);
+        return t;
+    }
+
+    /** The single team of older versions becomes the team of its league. */
+    private static void migrate(Context c) {
+        SharedPreferences p = prefs(c);
+        String league = p.getString("team_league", "");
+        if (league.isEmpty()) return;
+        if (p.getString("t." + league + ".id", "").isEmpty() && !p.getString("team_id", "").isEmpty()) {
+            String k = "t." + league + ".";
+            p.edit().putString(k + "id", p.getString("team_id", "")).putString(k + "abbr", p.getString("team_abbr", ""))
+                    .putString(k + "name", p.getString("team_name", "")).putString(k + "short", p.getString("team_short", ""))
+                    .putString(k + "logo", p.getString("team_logo", "")).putInt(k + "color", p.getInt("team_color", 0xFF5E6874))
+                    .putInt(k + "alt", p.getInt("team_alt", 0xFFFFFFFF)).commit();
+        }
+        p.edit().remove("team_league").remove("team_id").remove("team_abbr").remove("team_name").remove("team_short")
+                .remove("team_logo").remove("team_color").remove("team_alt").commit();
+    }
+
+    /** The team Home follows now (the one that plays soonest), else your first one; null without teams. */
+    static MyTeam focus(Context c) {
+        MyTeam t = focusLeague.isEmpty() ? null : myTeam(c, focusLeague);
+        if (t != null) return t;
+        List<MyTeam> all = myTeams(c);
+        return all.isEmpty() ? null : all.get(0);
+    }
+
+    /** The followed team's details; empty when you have no team. */
     static String teamLeague(Context c) {
-        return prefs(c).getString("team_league", "");
+        MyTeam t = focus(c);
+        return t == null ? "" : t.league;
     }
 
     static String teamId(Context c) {
-        return prefs(c).getString("team_id", "");
+        MyTeam t = focus(c);
+        return t == null ? "" : t.id;
     }
 
     static String teamAbbr(Context c) {
-        return prefs(c).getString("team_abbr", "");
+        MyTeam t = focus(c);
+        return t == null ? "" : t.abbr;
     }
 
     static String teamName(Context c) {
-        return prefs(c).getString("team_name", "");
+        MyTeam t = focus(c);
+        return t == null ? "" : t.name;
     }
 
     static int teamColor(Context c) {
-        return prefs(c).getInt("team_color", 0xFF5E6874);
+        MyTeam t = focus(c);
+        return t == null ? 0xFF5E6874 : t.color;
     }
 
     static int teamAltColor(Context c) {
-        return prefs(c).getInt("team_alt", 0xFFFFFFFF);
+        MyTeam t = focus(c);
+        return t == null ? 0xFFFFFFFF : t.alt;
     }
 
     static String teamLogo(Context c) {
-        return prefs(c).getString("team_logo", "");
+        MyTeam t = focus(c);
+        return t == null ? "" : t.logo;
     }
 
     static boolean alerts(Context c) {
@@ -166,8 +237,7 @@ final class Sports {
         synchronized (CACHE) {
             CACHE.clear();
         }
-        nextGame = null;
-        nextGameAt = 0;
+        NEXT.clear();
     }
 
     /** Drops what was fetched for the old settings (after a restore). */
@@ -176,29 +246,46 @@ final class Sports {
             CACHE.clear();
             FETCHED.clear();
         }
-        nextGame = null;
-        nextGameAt = 0;
+        NEXT.clear();
+        focusLeague = "";
     }
 
+    /** Your team in that league; a Team without id takes it off. */
     static void setTeam(Context c, String leagueKey, Team t) {
-        prefs(c).edit().putString("team_league", leagueKey).putString("team_id", t.id).putString("team_abbr", t.abbr)
-                .putString("team_name", t.name).putString("team_short", t.shortName).putInt("team_color", t.color)
-                .putInt("team_alt", t.altColor).putString("team_logo", t.logo).apply();
-        nextGame = null;
-        nextGameAt = 0;
+        migrate(c);
+        String k = "t." + leagueKey + ".";
+        SharedPreferences.Editor e = prefs(c).edit();
+        if (t.id.isEmpty()) {
+            for (String f : new String[]{"id", "abbr", "name", "short", "logo", "color", "alt"}) e.remove(k + f);
+        } else {
+            e.putString(k + "id", t.id).putString(k + "abbr", t.abbr).putString(k + "name", t.name)
+                    .putString(k + "short", t.shortName).putString(k + "logo", t.logo).putInt(k + "color", t.color)
+                    .putInt(k + "alt", t.altColor);
+        }
+        e.apply();
+        NEXT.clear();
+        focusLeague = "";
     }
 
     static String teamShort(Context c) {
-        String s = prefs(c).getString("team_short", "");
-        return s.isEmpty() ? teamName(c) : s;
+        MyTeam t = focus(c);
+        return t == null ? "" : t.shortName.isEmpty() ? t.name : t.shortName;
+    }
+
+    /** "Chiefs, Santos" for the quick settings tile. */
+    static String teamsLabel(Context c) {
+        List<String> names = new ArrayList<>();
+        for (MyTeam t : myTeams(c)) names.add(t.shortName.isEmpty() ? t.name : t.shortName);
+        return TextUtils.join(", ", names);
     }
 
     // ---------------------------------------------------------------- data
 
     private static final Map<String, List<Game>> CACHE = new HashMap<>();
     private static final Map<String, Long> FETCHED = new HashMap<>();
-    private static Game nextGame;
-    private static long nextGameAt;
+    /** Each team's next game (by league and id) and when it was looked up. */
+    private static final Map<String, Game> NEXT = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, Long> NEXT_AT = new java.util.concurrent.ConcurrentHashMap<>();
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
     interface Callback {
@@ -216,35 +303,55 @@ final class Sports {
             return;
         }
         Set<String> leagues = leagues(app);
-        String myLeague = teamLeague(app), myAbbr = teamAbbr(app), myId = teamId(app);
+        List<MyTeam> teams = myTeams(app);
+        Set<String> teamLeagues = new HashSet<>();
+        for (MyTeam t : teams) teamLeagues.add(t.league);
         new Thread(() -> {
             List<Game> all = new ArrayList<>();
             for (League l : LEAGUES) {
-                if (!leagues.contains(l.key) && !l.key.equals(myLeague)) continue;
+                if (!leagues.contains(l.key) && !teamLeagues.contains(l.key)) continue;
                 all.addAll(today(l));
             }
+            // Your teams' games today; Home follows one: live first, then the next to start, then a finished one.
+            List<Game> ours = new ArrayList<>();
             Game mine = null;
-            if (!myAbbr.isEmpty()) {
-                for (Game g : all) if (g.leagueKey.equals(myLeague) && g.side(myAbbr) != null) mine = g;
+            MyTeam follow = null;
+            for (MyTeam t : teams) {
+                for (Game g : all) {
+                    if (!g.leagueKey.equals(t.league) || g.side(t.abbr) == null) continue;
+                    ours.add(g);
+                    if (mine == null || rank(g) < rank(mine) || (rank(g) == rank(mine) && g.start < mine.start)) {
+                        mine = g;
+                        follow = t;
+                    }
+                }
             }
+            // No game today: the team that plays soonest.
             Game next = mine;
-            if (next == null && !myId.isEmpty()) next = nextGame(myLeague, myId);
-            // Your team's game first, then live, then upcoming by time, then finished.
+            if (next == null) {
+                for (MyTeam t : teams) {
+                    Game n = nextGame(t.league, t.id);
+                    if (n != null && (next == null || n.start < next.start)) {
+                        next = n;
+                        follow = t;
+                    }
+                }
+            }
+            focusLeague = follow == null ? "" : follow.league;
+            // Your teams' games first (the followed one at the very front), then live, upcoming and finished.
             final Game myGame = mine;
             all.sort((a, b) -> {
                 if (a == myGame) return -1;
                 if (b == myGame) return 1;
-                int ra = a.live() ? 0 : a.done() ? 2 : 1, rb = b.live() ? 0 : b.done() ? 2 : 1;
+                boolean oa = ours.contains(a), ob = ours.contains(b);
+                if (oa != ob) return oa ? -1 : 1;
+                int ra = rank(a), rb = rank(b);
                 return ra != rb ? Integer.compare(ra, rb) : Long.compare(a.start, b.start);
             });
-            List<Game> shown = all;
-            if (!leagues.contains(myLeague) && myGame != null) {
-                shown = new ArrayList<>();
-                for (Game g : all) if (leagues.contains(g.leagueKey) || g == myGame) shown.add(g);
-            }
-            final List<Game> result = shown;
+            List<Game> shown = new ArrayList<>();
+            for (Game g : all) if (leagues.contains(g.leagueKey) || ours.contains(g)) shown.add(g);
             final Game n = next;
-            MAIN.post(() -> cb.onGames(result, myGame, n));
+            MAIN.post(() -> cb.onGames(shown, myGame, n));
         }, "sports").start();
     }
 
@@ -288,10 +395,18 @@ final class Sports {
         return games;
     }
 
-    /** Your team's next game (or the one on now) from its schedule, cached for an hour. */
+    /** 0 live, 1 still to come, 2 finished: the order games are shown and followed in. */
+    private static int rank(Game g) {
+        return g.live() ? 0 : g.done() ? 2 : 1;
+    }
+
+    /** A team's next game (or the one on now) from its schedule, cached for an hour per team. */
     static Game nextGame(String leagueKey, String teamId) {
         long now = System.currentTimeMillis();
-        if (nextGame != null && now - nextGameAt < 60 * 60_000 && (nextGame.start > now - 4 * 3_600_000L)) return nextGame;
+        String key = leagueKey + ":" + teamId;
+        Game cached = NEXT.get(key);
+        Long at = NEXT_AT.get(key);
+        if (cached != null && at != null && now - at < 60 * 60_000 && cached.start > now - 4 * 3_600_000L) return cached;
         League l = league(leagueKey);
         if (l == null) return null;
         try {
@@ -303,8 +418,10 @@ final class Sports {
                 if (g == null || g.done()) continue;
                 if (best == null || g.start < best.start) best = g;
             }
-            nextGame = best;
-            nextGameAt = now;
+            if (best != null) {
+                NEXT.put(key, best);
+                NEXT_AT.put(key, now);
+            }
             return best;
         } catch (Exception e) {
             return null;

@@ -570,7 +570,7 @@ public class HomeActivity extends Activity {
             myGame = mine;
             ringColor = mine != null ? Sports.teamColor(this) : Color.WHITE;
             nextGame = next;
-            sports.show(today, Sports.teamAbbr(this), Sports.teamColor(this));
+            sports.show(today, Sports.myTeams(this));
             // The screen is 540 dp tall: with the "Hoy" row, the team logo and the player there is no room left for
             // Recientes, so they step aside while the row shows (the score matters more on game day).
             recentsRow.setVisibility(sports.getVisibility() == View.VISIBLE ? View.GONE

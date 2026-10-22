@@ -32,11 +32,10 @@ final class GameAlerts {
     private final Handler bg;
     private final float density;
 
-    private String gameId;
-    private String lastState;
-    private String lastMine, lastTheirs;
-    /** The game whose 15-minute heads-up was shown. */
-    private String kickoffShown;
+    /** What each of your teams' games looked like at the last look (by game id): state, our score, theirs. */
+    private final java.util.Map<String, String[]> seen = new java.util.HashMap<>();
+    /** The games whose 15-minute heads-up was shown. */
+    private final java.util.Set<String> kickoffShown = new java.util.HashSet<>();
     private static final long KICKOFF_MS = 15 * 60_000L;
     private View card;
 
@@ -69,19 +68,26 @@ final class GameAlerts {
         }
     };
 
-    /** One look at today's game; returns when to look again. */
+    /** One look at your teams' games today; returns when to look again (soonest of them). */
     private long poll() {
-        if (!Sports.enabled(service) || !Sports.alerts(service) || Sports.teamAbbr(service).isEmpty()) return IDLE_MS;
-        Sports.League l = Sports.league(Sports.teamLeague(service));
-        if (l == null) return IDLE_MS;
-        String abbr = Sports.teamAbbr(service);
-        Sports.Game game = null;
-        for (Sports.Game g : Sports.today(l)) if (g.side(abbr) != null) game = g;
-        if (game == null) return IDLE_MS;
-        Sports.Team me = game.side(abbr), them = game.other(abbr);
-        boolean first = !game.id.equals(gameId);
-        if (!first) {
-            String team = Sports.teamShort(service);
+        if (!Sports.enabled(service) || !Sports.alerts(service)) return IDLE_MS;
+        long wait = IDLE_MS;
+        for (Sports.MyTeam t : Sports.myTeams(service)) {
+            Sports.League l = Sports.league(t.league);
+            if (l == null) continue;
+            for (Sports.Game g : Sports.today(l)) if (g.side(t.abbr) != null) wait = Math.min(wait, look(t, g));
+        }
+        return wait;
+    }
+
+    /** One of your teams' games: alerts for what changed since the last look; returns when to look again. */
+    private long look(Sports.MyTeam t, Sports.Game game) {
+        Sports.Team me = game.side(t.abbr), them = game.other(t.abbr);
+        String team = t.shortName.isEmpty() ? t.name : t.shortName;
+        me.color = t.color;
+        String[] last = seen.get(game.id);
+        if (last != null) {
+            String lastState = last[0], lastMine = last[1], lastTheirs = last[2];
             String score = me.abbr + "  " + me.score + " – " + them.score + "  " + them.abbr;
             if ("pre".equals(lastState) && game.live()) {
                 show(game, me, "Empieza el partido", team + " vs " + them.shortName);
@@ -95,16 +101,12 @@ final class GameAlerts {
         }
         // A heads-up a quarter of an hour before kickoff, once per game.
         long left = game.start - System.currentTimeMillis();
-        if ("pre".equals(game.state) && left > 0 && left <= KICKOFF_MS && !game.id.equals(kickoffShown)) {
-            kickoffShown = game.id;
-            show(game, me, "En " + Math.max(1, left / 60_000) + " min: " + Sports.teamShort(service) + " vs " + them.shortName,
+        if ("pre".equals(game.state) && left > 0 && left <= KICKOFF_MS && kickoffShown.add(game.id)) {
+            show(game, me, "En " + Math.max(1, left / 60_000) + " min: " + team + " vs " + them.shortName,
                     game.broadcast.isEmpty() ? "Empieza a las " + Sports.when(service, game.start)
                             : "Por " + game.broadcast + "  ·  " + Sports.when(service, game.start));
         }
-        gameId = game.id;
-        lastState = game.state;
-        lastMine = me.score;
-        lastTheirs = them.score;
+        seen.put(game.id, new String[]{game.state, me.score, them.score});
         long soon = game.start - System.currentTimeMillis();
         return game.live() || (soon > 0 && soon < 20 * 60_000) ? LIVE_MS : game.done() ? IDLE_MS : Math.min(IDLE_MS, Math.max(LIVE_MS, soon - 10 * 60_000));
     }

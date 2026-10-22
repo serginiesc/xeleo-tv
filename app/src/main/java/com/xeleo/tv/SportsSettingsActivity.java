@@ -94,15 +94,19 @@ public class SportsSettingsActivity extends Activity {
             leagues.addView(chip, glp);
         }
 
-        String team = Sports.teamName(this);
-        row("Tu equipo", team.isEmpty() ? "Elegir" : team, v -> showLeagues());
+        // Your teams, one per league: Home follows the one that plays soonest.
+        label("Tus equipos (uno por liga)");
+        for (Sports.League l : Sports.LEAGUES) {
+            Sports.MyTeam t = Sports.myTeam(this, l.key);
+            row(l.label, t == null ? "Elegir" : t.name, v -> showTeams(l));
+        }
         row("Avisos sobre otras apps", Sports.alerts(this) ? "Encendidos" : "Apagados", v -> {
             Sports.set(this, "alerts", !Sports.alerts(this));
             refresh(0);
         });
         TextView note = text(11, TEXT_DIM, regular);
-        note.setText("Avisan cuando empieza el partido de tu equipo, cuando anotan y el final. Apágalos si lo ves por "
-                + "una señal con retraso y no quieres enterarte antes.");
+        note.setText("Avisan 15 minutos antes, al empezar, cuando anotan y al final, para todos tus equipos. "
+                + "Apágalos si lo ves por una señal con retraso y no quieres enterarte antes.");
         note.setPadding(dp(2), dp(4), 0, dp(10));
         card.addView(note);
         TextView source = text(10, 0x99C4C7C5, regular);
@@ -143,22 +147,6 @@ public class SportsSettingsActivity extends Activity {
 
     // ---------------------------------------------------------------- team picker
 
-    private void showLeagues() {
-        card.removeAllViews();
-        title("Tu equipo", "Elige la liga.");
-        View first = null;
-        for (Sports.League l : Sports.LEAGUES) {
-            View r = row(l.label, l.key.equals("selecciones") ? "Portugal, México" : "", v -> showTeams(l));
-            if (first == null) first = r;
-        }
-        row("Ninguno", "Quitar equipo", v -> {
-            Sports.setTeam(this, "", new Sports.Team());
-            showSettings();
-        });
-        View f = first;
-        f.post(f::requestFocus);
-    }
-
     private void showTeams(Sports.League l) {
         card.removeAllViews();
         title(l.label, "Cargando equipos…");
@@ -170,12 +158,35 @@ public class SportsSettingsActivity extends Activity {
                     hint.setText("No se pudieron cargar los equipos. Revisa la conexión.");
                     return;
                 }
-                hint.setText("Elige tu equipo.");
+                hint.setText("Elige tu equipo de " + l.label + ".");
                 GridLayout grid = new GridLayout(this);
                 grid.setColumnCount(3);
                 card.addView(grid);
-                String mine = Sports.teamId(this);
+                Sports.MyTeam current = Sports.myTeam(this, l.key);
+                String mine = current == null ? "" : current.id;
                 View focus = null;
+                if (current != null) {
+                    // First tile: no team in this league.
+                    LinearLayout none = new LinearLayout(this);
+                    none.setGravity(Gravity.CENTER_VERTICAL);
+                    none.setPadding(dp(12), 0, dp(8), 0);
+                    none.setFocusable(true);
+                    none.setClickable(true);
+                    TextView nn = text(12, TEXT, regular);
+                    nn.setText("Ninguno");
+                    none.addView(nn);
+                    styleTile(none, nn, false, false);
+                    none.setOnFocusChangeListener((v, f) -> styleTile(none, nn, f, false));
+                    none.setOnClickListener(v -> {
+                        Sports.setTeam(this, l.key, new Sports.Team());
+                        showSettings();
+                    });
+                    GridLayout.LayoutParams nlp = new GridLayout.LayoutParams();
+                    nlp.width = dp(152);
+                    nlp.height = dp(40);
+                    nlp.setMargins(0, 0, dp(8), dp(8));
+                    grid.addView(none, nlp);
+                }
                 for (Sports.Team t : teams) {
                     LinearLayout b = new LinearLayout(this);
                     b.setGravity(Gravity.CENTER_VERTICAL);
