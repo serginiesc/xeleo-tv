@@ -10,6 +10,10 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 |---|---|
 | ![Inicio de noche con el cielo nocturno](docs/screenshots/inicio-noche.jpg) | ![Día de partido de Santos: el inicio en sus colores, con rival, hora y la cuenta regresiva en grande](docs/screenshots/dia-de-partido.jpg) |
 
+| Partido en vivo, de noche | Si gana tu equipo |
+|---|---|
+| ![Santos en vivo 2 a 1 contra Tijuana, con el estadio dibujado en sus colores y los reflectores encendidos](docs/screenshots/partido-en-vivo.jpg) | ![¡Ganaron! con confeti en los colores de Santos y el próximo partido](docs/screenshots/ganaron.jpg) |
+
 | Panel del partido, en vivo | En vivo (Pluto TV y ViX) |
 |---|---|
 | ![Panel de América vs Atlas en juego: marcador, líderes, comparativa, tabla del Apertura y dónde verlo](docs/screenshots/panel-partido.jpg) | ![Pestaña En vivo en Deportes en vivo, con ViX Deportes y los canales de Pluto](docs/screenshots/en-vivo.jpg) |
