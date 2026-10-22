@@ -57,8 +57,10 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
 - **Fila "Hoy"** con los partidos del día de las ligas que elijas (NFL, Liga MX, selecciones, NBA, MLB), con
   marcador en vivo.
-- **Tu equipo:** el día que juega, el inicio se pinta con sus colores y muestra su logo, el rival, la hora, el
-  canal y la cuenta regresiva; si gana, festeja. Los demás días, su botón abre su último partido y la tabla.
+- **Tus equipos, uno por liga** (por ejemplo Chiefs en NFL y Santos en Liga MX). El inicio sigue al que juega
+  más pronto: el día que juega, se pinta con sus colores y muestra su logo, el rival, la hora, el canal y la cuenta
+  regresiva (y festeja si gana); los demás días dice cuál es tu próximo partido. En la fila Hoy, cada equipo tuyo
+  que no juega trae su botón con su último partido y su tabla.
 - **Panel del partido:** OK sobre un partido de "Hoy" abre marcador por periodo, líderes, comparativa de
   equipos, la tabla de su grupo y el próximo partido. ◀ ▶ pasan a los otros partidos; mientras se juega se
   actualiza cada 30 s.

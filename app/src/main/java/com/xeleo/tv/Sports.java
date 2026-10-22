@@ -410,7 +410,9 @@ final class Sports {
         League l = league(leagueKey);
         if (l == null) return null;
         try {
-            JSONObject d = get("https://site.api.espn.com/apis/site/v2/sports/" + l.paths[0] + "/teams/" + teamId + "/schedule");
+            // Soccer schedules list only played games unless asked for the fixtures.
+            JSONObject d = get("https://site.api.espn.com/apis/site/v2/sports/" + l.paths[0] + "/teams/" + teamId + "/schedule"
+                    + ("soccer".equals(l.sport) ? "?fixture=true" : ""));
             JSONArray events = d.optJSONArray("events");
             Game best = null;
             for (int i = 0; events != null && i < events.length(); i++) {
