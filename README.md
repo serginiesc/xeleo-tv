@@ -88,6 +88,13 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 - Guía de Pluto TV (pública, sin clave, no oficial: puede cambiar). Los anuncios al entrar a un canal son de
   Pluto o ViX; XELEO no los controla.
 
+### Actualizaciones
+
+- XELEO se **actualiza solo desde GitHub**: cada 6 horas revisa la versión de Releases; si hay una nueva,
+  **Ajustes** muestra un punto y en menú rápido → **Acerca de** aparece **Actualizar**. Descarga el APK y Android
+  pide un solo OK en pantalla (una app no puede actualizarse sin preguntar). La primera vez Android puede pedir
+  permitir «Instalar apps desconocidas» para XELEO TV; `install.sh` ya lo deja permitido.
+
 ### Sin internet y al reinstalar
 
 - **Sin internet** (por ejemplo, la tele recién prendida y el Wi‑Fi aún conectando), el inicio muestra los partidos
