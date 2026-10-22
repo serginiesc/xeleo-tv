@@ -65,6 +65,9 @@ final class Backup {
     /** Writes the backup file; returns its path. */
     static String save(Context c) throws Exception {
         File f = file(c);
+        // One put there over adb belongs to the shell, and can't be written over; it can be deleted.
+        //noinspection ResultOfMethodCallIgnored
+        f.delete();
         try (FileOutputStream out = new FileOutputStream(f)) {
             out.write(export(c).toString(2).getBytes(StandardCharsets.UTF_8));
         }

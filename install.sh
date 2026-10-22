@@ -56,6 +56,7 @@ if [ "$FRESH" = 1 ] && [ -f "$BACKUP" ]; then
   "${A[@]}" mkdir -p "$(dirname "$REMOTE")"
   "$ADB" -s "$DEV" push "$BACKUP" "$REMOTE" >/dev/null
   "${A[@]}" am broadcast -n "$PKG/.ControlReceiver" -a "$PKG.RESTORE" >/dev/null && echo "Settings restored from $BACKUP."
+  "${A[@]}" rm -f "$REMOTE"   # pushed by adb it belongs to the shell; the app writes its own next time
 fi
 
 "${A[@]}" pm grant com.xeleo.tv android.permission.ACCESS_FINE_LOCATION
