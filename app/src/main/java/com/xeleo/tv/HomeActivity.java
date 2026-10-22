@@ -696,11 +696,14 @@ public class HomeActivity extends Activity {
      * there; from three hours before, during the game and after a win, the hero alone with the full colour and photo.
      */
     private void showGameDay(Sports.Game mine, Sports.Game next) {
+        String preview = GameDay.preview;
         Sports.MyTeam team = Sports.focus(this);
+        // The preview can show your team of another league (--es league ligamx).
+        Sports.MyTeam asked = preview == null || GameDay.previewLeague == null ? null : Sports.myTeam(this, GameDay.previewLeague);
+        if (asked != null) team = asked;
         String abbr = team == null ? "" : team.abbr;
         Sports.Game game = mine;
         GameDay.Moment m = GameDay.moment(mine, abbr);
-        String preview = GameDay.preview;
         if (preview != null && team != null) {
             game = GameDay.sample(preview, team, next);
             m = GameDay.moment(game, abbr);
@@ -774,10 +777,14 @@ public class HomeActivity extends Activity {
             GameDay.photo(league, teamId, (big, small) -> {
                 if (big != null && !posterOnly) {
                     Logos.photo(big, small, b -> { if (heroMoment != GameDay.Moment.NONE) backdrop.setPhoto(b); });
-                } else {
+                } else if ("nfl".equals(lg)) {
+                    // The starting QB's headshot is always current; other leagues' are few and often old.
+                    backdrop.setStadium(posterAlt);   // until the headshot is in
                     GameDay.star(lg, id, (url, number) -> Logos.cutout(url, b -> {
                         if (heroMoment != GameDay.Moment.NONE) backdrop.setPoster(b, number, posterAlt, medium);
                     }));
+                } else {
+                    backdrop.setStadium(posterAlt);
                 }
             });
         } else {

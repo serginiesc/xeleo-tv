@@ -138,6 +138,8 @@ final class GameDay {
     static volatile String preview;
     /** The preview without the photo (only the colours), or with the poster instead of the news photo. */
     static volatile boolean previewNoPhoto, previewPoster;
+    /** The league of the team to preview ("ligamx"), or null for the one Home follows. */
+    static volatile String previewLeague;
 
     /** A made-up game of your team for the preview, against the rival of its next game when known. */
     static Sports.Game sample(String moment, Sports.MyTeam t, Sports.Game next) {
@@ -359,6 +361,7 @@ final class GameDay {
         private int alt = 0xFFFFFFFF;
         private Typeface face;
         private ColorMatrixColorFilter duotone;
+        private boolean stadium;
         /** Where it fades out: the top of the app row. */
         private int edge;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -385,15 +388,27 @@ final class GameDay {
         }
 
         void setPhoto(Bitmap b) {
-            if (b == photo && poster == null) return;
+            if (b == photo && poster == null && !stadium) return;
             photo = b;
             poster = null;
+            stadium = false;
+            invalidate();
+        }
+
+        /** Without photo or poster: a stadium drawn in the team's colours (alt for its lights). */
+        void setStadium(int alt) {
+            if (stadium && photo == null && poster == null && alt == this.alt) return;
+            photo = null;
+            poster = null;
+            stadium = true;
+            this.alt = alt;
             invalidate();
         }
 
         void setPoster(Bitmap b, String number, int alt, Typeface face) {
             if (b == poster && photo == null) return;
             photo = null;
+            stadium = false;
             poster = b;
             this.number = number == null ? "" : number;
             this.alt = alt;
@@ -479,9 +494,111 @@ final class GameDay {
                 c.drawRect(x0, 0, x0 + 700 * k, b, paint);
             } else if (poster != null && photoAlpha > 0) {
                 drawPoster(c, w, h, b);
+            } else if (stadium && photoAlpha > 0) {
+                drawStadium(c, w, h, b);
             }
             paint.setShader(null);
             mask.setShader(null);
+        }
+
+        /**
+         * A stadium drawn in the team's colours on the right, lit from inside: its arched facade with ribs and lit
+         * windows, four floodlights whose beams cross the sky, a few sparks over it. Needs no photo.
+         */
+        private void drawStadium(Canvas c, int w, int h, float b) {
+            float s = h / 1080f;
+            float x1 = w * 0.5f, x2 = w * 0.985f, cx = (x1 + x2) / 2, top = b - 150 * s, crown = b - 280 * s;
+            float ctrl = 2 * crown - top;   // the quadratic's control point that puts the arc's peak at crown
+            int light = lum(alt) < 110 ? 0xFFFFFFFF : alt | 0xFF000000;
+            int facade = mix(color, 0xFF000000, 0.35f), deep = mix(color, 0xFF000000, 0.7f);
+            int rim = mix(color, 0xFFFFFFFF, 0.5f);
+            int layer = c.saveLayerAlpha(0, 0, w, b, (int) (255 * photoAlpha));
+
+            // The light over the pitch, spilling out of the stadium.
+            paint.setShader(new RadialGradient(cx, top, 560 * s, alpha(light, 130), alpha(light, 0), Shader.TileMode.CLAMP));
+            c.drawRect(x1 - 300 * s, top - 560 * s, w, b, paint);
+
+            // Floodlights: a pole on the arc, a lamp, and a soft beam up and outwards.
+            float[] at = {0.14f, 0.36f, 0.64f, 0.86f};
+            Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
+            line.setStyle(Paint.Style.STROKE);
+            for (float u : at) {
+                float bx = x1 + (x2 - x1) * u, by = top + 2 * u * (1 - u) * (ctrl - top), hy = by - 170 * s;
+                // Short enough to fade out before the clock and the tabs.
+                double tilt = (u - 0.5f) * 1.1, spread = 0.1, len = 340 * s;
+                android.graphics.Path beam = new android.graphics.Path();
+                beam.moveTo(bx, hy);
+                beam.lineTo(bx + (float) (Math.sin(tilt - spread) * len), hy - (float) (Math.cos(tilt - spread) * len));
+                beam.lineTo(bx + (float) (Math.sin(tilt + spread) * len), hy - (float) (Math.cos(tilt + spread) * len));
+                beam.close();
+                paint.setShader(new LinearGradient(bx, hy, bx + (float) (Math.sin(tilt) * len), hy - (float) (Math.cos(tilt) * len),
+                        alpha(light, 80), alpha(light, 0), Shader.TileMode.CLAMP));
+                c.drawPath(beam, paint);
+                paint.setShader(null);
+                line.setStrokeWidth(4 * s);
+                line.setColor(deep);
+                c.drawLine(bx, by, bx, hy, line);
+                paint.setColor(light);
+                c.drawRoundRect(new RectF(bx - 20 * s, hy - 9 * s, bx + 20 * s, hy + 7 * s), 3 * s, 3 * s, paint);
+            }
+
+            // The facade: an arch, darker at the foot.
+            android.graphics.Path body = new android.graphics.Path();
+            body.moveTo(x1, b);
+            body.lineTo(x1, top);
+            body.quadTo(cx, ctrl, x2, top);
+            body.lineTo(x2, b);
+            body.close();
+            paint.setShader(new LinearGradient(0, crown, 0, b, facade, deep, Shader.TileMode.CLAMP));
+            c.drawPath(body, paint);
+            paint.setShader(null);
+            // Ribs, a row of lit windows and the roof's edge.
+            java.util.Random rnd = new java.util.Random(7);
+            line.setStrokeWidth(3 * s);
+            line.setColor(alpha(rim, 70));
+            float step = 0.032f;
+            for (float u = step; u < 1; u += step) {
+                float x = x1 + (x2 - x1) * u, y = top + 2 * u * (1 - u) * (ctrl - top);
+                c.drawLine(x, y + 16 * s, x, b, line);
+                if (rnd.nextFloat() < 0.75f && u + step < 1) {
+                    float wx = x + 5 * s, ww = (x2 - x1) * step - 10 * s;
+                    paint.setColor(alpha(light, 60 + rnd.nextInt(110)));
+                    c.drawRect(wx, b - 84 * s, wx + ww, b - 66 * s, paint);
+                }
+            }
+            android.graphics.Path roof = new android.graphics.Path();
+            roof.moveTo(x1, top);
+            roof.quadTo(cx, ctrl, x2, top);
+            line.setStrokeWidth(12 * s);
+            line.setColor(rim);
+            c.drawPath(roof, line);
+            roof.offset(0, 30 * s);
+            line.setStrokeWidth(4 * s);
+            line.setColor(alpha(rim, 110));
+            c.drawPath(roof, line);
+
+            // Sparks over the stadium.
+            for (int i = 0; i < 16; i++) {
+                float x = x1 + rnd.nextFloat() * (x2 - x1), y = crown - (60 + rnd.nextFloat() * 300) * s;
+                paint.setColor(alpha(light, 90 + rnd.nextInt(120)));
+                c.drawCircle(x, y, (2 + rnd.nextFloat() * 3) * s, paint);
+            }
+            c.restoreToCount(layer);
+        }
+
+        private static int lum(int c) {
+            return (299 * ((c >> 16) & 0xFF) + 587 * ((c >> 8) & 0xFF) + 114 * (c & 0xFF)) / 1000;
+        }
+
+        private static int alpha(int c, int a) {
+            return (Math.max(0, Math.min(255, a)) << 24) | (c & 0x00FFFFFF);
+        }
+
+        private static int mix(int a, int b, float t) {
+            int r = (int) (((a >> 16) & 0xFF) * (1 - t) + ((b >> 16) & 0xFF) * t);
+            int g = (int) (((a >> 8) & 0xFF) * (1 - t) + ((b >> 8) & 0xFF) * t);
+            int bl = (int) ((a & 0xFF) * (1 - t) + (b & 0xFF) * t);
+            return 0xFF000000 | (r << 16) | (g << 8) | bl;
         }
 
         /** The mock-up's poster: a glow, the number outlined, the player standing on the app row. */
@@ -500,7 +617,9 @@ final class GameDay {
                 num.setTextAlign(Paint.Align.CENTER);
                 if (face != null) num.setTypeface(face);
                 num.setFontVariationSettings("'wght' 700");
-                num.setColor(((int) (140 * photoAlpha) << 24) | (alt & 0x00FFFFFF));
+                // The second colour, unless it is too dark to see over the first (then white).
+                int lum = (299 * ((alt >> 16) & 0xFF) + 587 * ((alt >> 8) & 0xFF) + 114 * (alt & 0xFF)) / 1000;
+                num.setColor(((int) (140 * photoAlpha) << 24) | (lum < 110 ? 0xFFFFFF : alt & 0x00FFFFFF));
                 Paint.FontMetrics fm = num.getFontMetrics();
                 c.drawText(number, cx, b - 300 * s - (fm.ascent + fm.descent) / 2, num);
             }
@@ -509,8 +628,9 @@ final class GameDay {
             RectF at = new RectF(left, b - ph, left + pw, b);
             paint.setAlpha((int) (255 * photoAlpha));
             c.drawBitmap(poster, null, at, paint);
+            // Almost all duotone: an old headshot may still wear another club's shirt.
             paint.setColorFilter(duotone);
-            paint.setAlpha((int) (184 * photoAlpha));
+            paint.setAlpha((int) (235 * photoAlpha));
             c.drawBitmap(poster, null, at, paint);
             paint.setColorFilter(null);
             paint.setAlpha(255);

@@ -15,7 +15,8 @@ import android.content.Intent;
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST   (a reminder card in a few seconds)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.GAMEDAY_PREVIEW --es moment live
  * (game day on Home with your team: morning, soon, live or won; off goes back to the real one; --ez photo false
- * shows only the colours, --ez poster true the poster instead of the news photo)
+ * shows only the colours, --ez poster true the poster instead of the news photo, --es league ligamx your team
+ * of that league)
  */
 public class ControlReceiver extends BroadcastReceiver {
 
@@ -56,6 +57,7 @@ public class ControlReceiver extends BroadcastReceiver {
             GameDay.preview = m == null || m.equals("off") ? null : m;
             GameDay.previewNoPhoto = !intent.getBooleanExtra("photo", true);
             GameDay.previewPoster = intent.getBooleanExtra("poster", false);
+            GameDay.previewLeague = intent.getStringExtra("league");
             context.sendBroadcast(new Intent(REFRESH).setPackage(context.getPackageName()));
             setResultData("game day preview " + GameDay.preview);
         }

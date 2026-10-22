@@ -63,8 +63,8 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
   más pronto; los demás días dice cuál es tu próximo partido. En la fila Hoy, cada equipo tuyo que no juega
   trae su botón con su último partido y su tabla.
 - **Día de partido:** el inicio se pinta con los colores de tu equipo y, a la derecha, pone una foto reciente de
-  sus noticias en ESPN (cambia sola, sin notas tristes); si no hay ninguna, un póster de su figura (el QB titular
-  en la NFL, el 10 en futbol) en los colores del equipo, con su número detrás. En la mañana va suave; desde 3 horas antes, la cuenta
+  sus noticias en ESPN (cambia sola, sin notas tristes); si no hay ninguna, en la NFL un póster del QB titular en
+  los colores del equipo con su número detrás, y en las demás ligas un estadio dibujado en sus colores. En la mañana va suave; desde 3 horas antes, la cuenta
   regresiva en grande; durante el juego, el marcador grande (se actualiza cada 30 s); si gana, "¡Ganaron!" con confeti hasta la mañana
   siguiente. Si pierde, el inicio vuelve a la normalidad. OK sobre el marcador abre el panel del partido. La foto
   se apaga en Ajustes > Deportes.
@@ -179,7 +179,7 @@ clima), **Deportes** (ligas y tu equipo) y **En vivo**, si los quieres.
 - **Ver un aviso de partido de ejemplo:**
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SPORTS_TEST`
 - **Ver el día de partido con tu equipo** (`morning`, `soon`, `live`, `won`; `off` vuelve al real; `--ez photo
-  false` solo colores, `--ez poster true` el póster en vez de la foto):
+  false` solo colores, `--ez poster true` el póster o el estadio en vez de la foto, `--es league ligamx` tu equipo de esa liga):
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.GAMEDAY_PREVIEW --es moment live`
 - **Ver un recordatorio de ejemplo** (sale en unos segundos):
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST`
