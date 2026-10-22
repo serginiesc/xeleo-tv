@@ -39,6 +39,7 @@ public class LiveActivity extends Activity {
     private static final int TEXT = 0xFFFFFFFF;
     private static final int TEXT_DIM = 0xB3FFFFFF;
     private static final int RED = 0xFFE53935;
+    private static final int VIX = 0xFFF06A26;
 
     private float density;
     private Typeface regular, medium;
@@ -165,8 +166,8 @@ public class LiveActivity extends Activity {
         name.setShadowLayer(dp(6), 0, 0, 0x80000000);
         bar.addView(name);
         TextView source = text(13, TEXT_DIM, regular);
-        source.setText(Live.plutoInstalled(this) ? "Pluto TV  ·  OK abre el canal"
-                : "Pluto TV  ·  Instala la app Pluto TV para ver los canales");
+        source.setText(Live.plutoInstalled(this) ? "Pluto TV y ViX  ·  OK abre el canal en su app"
+                : "Pluto TV y ViX  ·  Instala la app Pluto TV para ver sus canales");
         source.setPadding(dp(14), dp(3), 0, 0);
         bar.addView(source, new LinearLayout.LayoutParams(0, -2, 1f));
         TextClock clock = new TextClock(this);
@@ -237,13 +238,13 @@ public class LiveActivity extends Activity {
         long now = System.currentTimeMillis();
         Live.Program p = ch.at(now);
         channelName.setText(ch.name);
-        boolean live = p != null && p.live;
-        badge.setText(live ? "EN VIVO" : "AHORA");
-        badge.setBackground(round(live ? RED : 0x33FFFFFF, dp(10)));
+        boolean live = p != null && p.live, vix = !ch.vix.isEmpty();
+        badge.setText(vix ? "ViX" : live ? "EN VIVO" : "AHORA");
+        badge.setBackground(round(vix ? VIX : live ? RED : 0x33FFFFFF, dp(10)));
         if (p == null) {
             title.setText(ch.name);
-            meta.setText("");
-            description.setText("");
+            meta.setText(vix ? "Canal gratis de ViX  ·  OK lo abre en la app de ViX" : "");
+            description.setText(vix ? "ViX no publica su programación; al abrirlo ves qué están pasando." : "");
             next.setText("");
             setProgress(0);
         } else {
@@ -269,6 +270,8 @@ public class LiveActivity extends Activity {
 
     private void setProgress(float f) {
         View track = (View) progressFill.getParent();
+        track.setVisibility(shownChannel != null && shownChannel.at(System.currentTimeMillis()) == null
+                ? View.INVISIBLE : View.VISIBLE);   // no programme (ViX): no bar
         track.post(() -> {
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) progressFill.getLayoutParams();
             lp.width = Math.round(track.getWidth() * Math.max(0, Math.min(1, f)));
@@ -406,6 +409,7 @@ public class LiveActivity extends Activity {
             chipsLine.addView(chip, lp);
             chips.put(key, chip);
         }
+        Rows.fence(chipsLine);
     }
 
     private void styleChip(TextView chip, boolean focused, boolean selected) {
@@ -441,6 +445,7 @@ public class LiveActivity extends Activity {
         }
         hint.setText(selected.equals(HIDDEN) ? "Mantén OK en un canal para volver a mostrarlo."
                 : "OK abre el canal  ·  Mantén OK para Mis canales, ocultarlo o un recordatorio");
+        Rows.fence(cardsLine);
         if (keep != null) keep.requestFocus();
     }
 
@@ -575,10 +580,11 @@ public class LiveActivity extends Activity {
         long now = System.currentTimeMillis();
         Live.Program p = ch.at(now);
         boolean star = Live.favorites(this).contains(ch.id) && !selected.equals(FAVORITES);   // in Mis canales
-        if (p != null || star) {
-            TextView on = text(9, p != null && p.live ? 0xFFFF8A80 : TEXT_DIM, medium);
+        boolean vix = !ch.vix.isEmpty();
+        if (p != null || star || vix) {
+            TextView on = text(9, vix ? 0xFFFF9A62 : p != null && p.live ? 0xFFFF8A80 : TEXT_DIM, medium);
             on.setLetterSpacing(0.08f);
-            String state = p == null ? "" : p.live ? "EN VIVO" : "AHORA";
+            String state = vix ? "ViX" : p == null ? "" : p.live ? "EN VIVO" : "AHORA";
             on.setText(star ? (state.isEmpty() ? "★" : "★  " + state) : state);
             top.addView(on);
         }
@@ -615,7 +621,7 @@ public class LiveActivity extends Activity {
             when.setText(hm.format(new Date(p.start)) + "–" + hm.format(new Date(p.stop))
                     + (n != null ? "  ·  Sigue: " + n.title : ""));
         } else {
-            when.setText(ch.name);
+            when.setText(vix ? "Abre en la app de ViX" : ch.name);
         }
         col.addView(when);
         card.addView(col, new FrameLayout.LayoutParams(-1, -1));

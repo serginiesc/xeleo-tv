@@ -120,6 +120,23 @@ public class QuickSettingsActivity extends Activity {
         TextView brand = text(13, TEXT, regular);
         brand.setText(Profile.tvName(this));
         footer.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
+        // Acerca de: the version, the author and the license (AboutActivity).
+        TextView about = text(10, TEXT_DIM, regular);
+        about.setText("Acerca de");
+        about.setPadding(dp(10), dp(5), dp(10), dp(5));
+        about.setFocusable(true);
+        about.setClickable(true);
+        about.setOnFocusChangeListener((v, f) -> {
+            GradientDrawable b = new GradientDrawable();
+            b.setCornerRadius(dp(12));
+            b.setColor(f ? TILE_FOCUS : 0);
+            about.setBackground(b);
+            about.setTextColor(f ? DARK : TEXT_DIM);
+        });
+        about.setOnClickListener(v -> open(new Intent(this, AboutActivity.class)));
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(-2, -2);
+        alp.rightMargin = dp(8);
+        footer.addView(about, alp);
         TextView weather = text(11, TEXT_DIM, regular);
         weather.setVisibility(View.GONE);
         Weather.update(this, weather, true);

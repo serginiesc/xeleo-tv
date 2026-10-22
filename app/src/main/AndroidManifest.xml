@@ -51,6 +51,14 @@
             android:windowSoftInputMode="adjustPan|stateHidden"
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
 
+        <!-- Quick settings > Acerca de: version, author and the MIT license. -->
+        <activity
+            android:name=".AboutActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+
         <!-- The game panel over Home: score, leaders, team stats and standings, from the "Hoy" row. -->
         <activity
             android:name=".GameActivity"

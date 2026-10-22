@@ -80,6 +80,8 @@ final class Sports {
         String id, leagueKey, sport, state = "pre", detail = "", broadcast = "";
         /** ESPN's path for the competition ("football/nfl"), for the game's summary. */
         String path = "";
+        /** Every channel or app ESPN lists for the game (mostly the US ones); broadcast is the first. */
+        final List<String> channels = new ArrayList<>();
         long start;
         Team home = new Team(), away = new Team();
 
@@ -344,10 +346,14 @@ final class Sports {
                 t.winner = c.optBoolean("winner");
             }
             JSONArray bc = comp.optJSONArray("broadcasts");
-            if (bc != null && bc.length() > 0) {
-                JSONArray names = bc.getJSONObject(0).optJSONArray("names");
-                if (names != null && names.length() > 0) g.broadcast = names.getString(0);
+            for (int i = 0; bc != null && i < bc.length(); i++) {
+                JSONArray names = bc.getJSONObject(i).optJSONArray("names");
+                for (int k = 0; names != null && k < names.length(); k++) {
+                    String n = names.getString(k);
+                    if (!g.channels.contains(n)) g.channels.add(n);
+                }
             }
+            if (!g.channels.isEmpty()) g.broadcast = g.channels.get(0);
             return g;
         } catch (Exception ex) {
             return null;
@@ -409,25 +415,58 @@ final class Sports {
         return f.parse(s).getTime();
     }
 
+    /** Channel or service names (lower case, contained in ESPN's) and the TV app that carries them. */
+    private static final String[][] APPS = {
+            {"prime", "com.amazon.amazonvideo.livingroom"},
+            {"espn", "com.disney.disneyplus"},
+            {"disney", "com.disney.disneyplus"},
+            {"star+", "com.disney.disneyplus"},
+            {"vix", "com.univision.prendetv"},
+            {"tudn", "com.univision.prendetv"},
+            {"univision", "com.univision.prendetv"},
+            {"youtube", "com.google.android.youtube.tv"},
+            {"netflix", "com.netflix.ninja"},
+            {"peacock", "com.peacocktv.peacockandroid"},
+            {"paramount", "com.cbs.ca"},
+            {"max", "com.wbd.stream"},
+            {"hbo", "com.wbd.stream"},
+            {"apple", "com.apple.atve.androidtv.appletv"},
+            {"dazn", "com.dazn"},
+    };
+
+    /** Where a league's games usually air in Mexico; ESPN lists the US channels, and none for Liga MX. */
+    static String[] mexico(String leagueKey) {
+        switch (leagueKey) {
+            case "ligamx": return new String[]{"ViX", "TUDN", "Azteca 7", "Canal 5", "Fox"};
+            case "selecciones": return new String[]{"TUDN", "ViX", "Azteca 7", "Canal 5"};
+            case "nfl": return new String[]{"ESPN", "Disney+", "Fox", "Canal 5", "Azteca 7", "Prime Video"};
+            case "nba": return new String[]{"ESPN", "Disney+", "NBA League Pass"};
+            case "mlb": return new String[]{"ESPN", "Disney+", "Fox"};
+            default: return new String[0];
+        }
+    }
+
     /** The TV app that carries a broadcast ("Prime Video" → Prime Video), if it is installed; else null. */
     static Intent broadcastApp(Context c, String broadcast) {
-        String b = broadcast == null ? "" : broadcast.toLowerCase(Locale.ROOT);
-        String[][] map = {
-                {"prime", "com.amazon.amazonvideo.livingroom"},
-                {"espn", "com.disney.disneyplus"},
-                {"disney", "com.disney.disneyplus"},
-                {"youtube", "com.google.android.youtube.tv"},
-                {"netflix", "com.netflix.ninja"},
-                {"peacock", "com.peacocktv.peacockandroid"},
-                {"paramount", "com.cbs.ca"},
-                {"max", "com.wbd.stream"},
-        };
-        for (String[] m : map) {
-            if (!b.contains(m[0])) continue;
-            Intent i = c.getPackageManager().getLeanbackLaunchIntentForPackage(m[1]);
-            if (i != null) return i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        List<Intent> apps = broadcastApps(c, Collections.singletonList(broadcast == null ? "" : broadcast));
+        return apps.isEmpty() ? null : apps.get(0);
+    }
+
+    /** The installed TV apps that carry any of these channels, once each, in their order. */
+    static List<Intent> broadcastApps(Context c, List<String> names) {
+        List<Intent> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (String name : names) {
+            String b = name.toLowerCase(Locale.ROOT);
+            for (String[] m : APPS) {
+                if (!b.contains(m[0]) || seen.contains(m[1])) continue;
+                Intent i = c.getPackageManager().getLeanbackLaunchIntentForPackage(m[1]);
+                if (i == null) continue;
+                seen.add(m[1]);
+                out.add(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            }
         }
-        return null;
+        return out;
     }
 
     private static int color(String hex, int fallback) {

@@ -46,6 +46,8 @@ final class Live {
 
     static final class Channel {
         String id = "", slug = "", name = "", logo = "", image = "";
+        /** ViX's callsign for a ViX channel (opened in the ViX app); empty for Pluto TV's. */
+        String vix = "";
         final List<Program> programs = new ArrayList<>();
 
         /** What is on at `t`, or null. */
@@ -201,6 +203,8 @@ final class Live {
     // ---------------------------------------------------------------- the copy on disk
 
     private static boolean diskTried;
+    /** Bumped when what the copy holds changes (2: ViX channels and the Deportes en vivo row). */
+    private static final int DISK_FORMAT = 2;
 
     private static java.io.File diskFile(Context c) {
         return new java.io.File(c.getFilesDir(), "guia-pluto.json");
@@ -218,13 +222,13 @@ final class Live {
                                 .put("i", p.image).put("s", p.start).put("x", p.stop).put("l", p.live));
                     }
                     chans.put(new JSONObject().put("id", ch.id).put("slug", ch.slug).put("name", ch.name)
-                            .put("logo", ch.logo).put("image", ch.image).put("p", progs));
+                            .put("logo", ch.logo).put("image", ch.image).put("v", ch.vix).put("p", progs));
                 }
                 out.put(new JSONObject().put("t", r.title).put("c", chans));
             }
             java.io.File tmp = new java.io.File(c.getFilesDir(), "guia-pluto.tmp");
             try (java.io.FileOutputStream f = new java.io.FileOutputStream(tmp)) {
-                f.write(new JSONObject().put("at", at).put("rows", out).toString().getBytes("UTF-8"));
+                f.write(new JSONObject().put("fmt", DISK_FORMAT).put("at", at).put("rows", out).toString().getBytes("UTF-8"));
             }
             //noinspection ResultOfMethodCallIgnored
             tmp.renameTo(diskFile(c));
@@ -241,6 +245,7 @@ final class Live {
             byte[] b = new byte[16384];
             for (int n; (n = in.read(b)) > 0; ) buf.write(b, 0, n);
             JSONObject all = new JSONObject(buf.toString("UTF-8"));
+            if (all.optInt("fmt") != DISK_FORMAT) return null;   // saved by an older XELEO: fetch afresh
             long at = all.getLong("at");
             if (System.currentTimeMillis() - at >= USABLE_MS) return null;
             Map<String, Channel> seen = new HashMap<>();
@@ -260,6 +265,7 @@ final class Live {
                         ch.name = o.optString("name");
                         ch.logo = o.optString("logo");
                         ch.image = o.optString("image");
+                        ch.vix = o.optString("v");
                         JSONArray ps = o.getJSONArray("p");
                         for (int j = 0; j < ps.length(); j++) {
                             JSONObject q = ps.getJSONObject(j);
@@ -373,6 +379,20 @@ final class Live {
             }
             if (!r.channels.isEmpty()) rows.add(r);
         }
+        // Deportes en vivo: Pluto's sports with ViX Deportes first; then a ViX button with ViX's free channels.
+        List<Channel> vix = vixChannels();
+        int at = 0;
+        for (int i = 0; i < rows.size(); i++) {
+            if (!rows.get(i).title.equals("Deportes")) continue;
+            Row sports = new Row("Deportes en vivo");
+            sports.channels.add(vix.get(0));
+            sports.channels.addAll(rows.get(i).channels);
+            rows.set(i, sports);
+            at = i + 1;
+        }
+        Row vixRow = new Row("ViX");
+        vixRow.channels.addAll(vix);
+        rows.add(at, vixRow);
         // Channels in no category (rare) still count for Mis canales.
         Row rest = new Row("");
         for (String id : PICKS) {
@@ -459,9 +479,18 @@ final class Live {
                 || c.getPackageManager().getLaunchIntentForPackage(PLUTO) != null;
     }
 
-    /** The channel in the Pluto TV app; its home if the link isn't understood; the Play Store if it isn't installed. */
+    /**
+     * The channel in its app (Pluto TV or ViX); the app's home if the link isn't understood; the Play Store if it
+     * isn't installed.
+     */
     static void open(Context c, Channel ch) {
-        Intent[] tries = {
+        boolean vix = !ch.vix.isEmpty();
+        String pkg = vix ? VIX : PLUTO;
+        Intent[] tries = vix ? new Intent[]{
+                new Intent(Intent.ACTION_VIEW, Uri.parse("https://vix.com/es-es/canales/channel-callsign-" + ch.vix)).setPackage(VIX),
+                c.getPackageManager().getLeanbackLaunchIntentForPackage(VIX),
+                new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + VIX)),
+        } : new Intent[]{
                 new Intent(Intent.ACTION_VIEW, Uri.parse("https://pluto.tv/latam/live-tv/" + ch.slug)).setPackage(PLUTO),
                 new Intent(Intent.ACTION_VIEW, Uri.parse("https://pluto.tv/live-tv/" + ch.slug)).setPackage(PLUTO),
                 c.getPackageManager().getLeanbackLaunchIntentForPackage(PLUTO),
@@ -471,10 +500,47 @@ final class Live {
             if (i == null) continue;
             try {
                 c.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                Recents.record(c, PLUTO);
+                Recents.record(c, pkg);
                 return;
             } catch (ActivityNotFoundException | SecurityException ignored) {
             }
         }
+    }
+
+    // ---------------------------------------------------------------- ViX
+
+    static final String VIX = "com.univision.prendetv";
+
+    /**
+     * ViX's free channels: name, ViX's callsign (its link is vix.com/es-es/canales/channel-callsign-<callsign>,
+     * which the ViX app opens on that channel) and its picture. ViX has no public guide, so they show without
+     * programmes, and open in the ViX app.
+     */
+    private static final String[][] VIX_CHANNELS = {
+            {"ViX Deportes 24/7", "Zona_TUDN_MX", "6aa2d624bcb5191e4fb4e0b0/a51fd7466992d218bbc8b88003a13a37"},
+            {"N+ Foro", "ForoTV-LATAM", "66e2cd617099897d3c4e81a0/f65aaf96a012d7c891771d5f1f96fce4"},
+            {"N+", "N_Plus_MEX", "63ea420d27b695a94b1d428b/3830196ffbfe732108455528f7103b6b"},
+            {"N+ Univision 24/7", "Noticias-Univision-24-7", "697a4b24ad6b839cbd318b71/fb3b5fb29ebfce9b3e7ea6963d536c43"},
+            {"Canal ViX", "Z224", "65007ff6e293209bb97af732/dd7d62a1cdd5e9fe401bb5d516652c11"},
+            {"La Rosa de Guadalupe", "Z005", "61b75fb008f1b309bf36f659/bb3fa20e860e35705f5e06b179ba9e69"},
+            {"Rubí", "Z033", "69dcd7e3e1c621e441c52695/500b5a6d7308dbc918f1ecd4672d72bb"},
+            {"Amores que Fuimos", "Z038", "6a1d32ccdc48ae086d5ea591/f08730593bc42971d67c8f255d7449ba"},
+            {"Lo que la Vida me Robó", "Z050", "636ebcf35cce1a695779709b/1428e1f661a06e4285cdf8f1ca57e206"},
+            {"Vecinos", "Z071", "6209318522bbc72ac5ec12ee/ad895f26368f89f4b0a7786b97636891"},
+    };
+
+    private static List<Channel> vixChannels() {
+        List<Channel> out = new ArrayList<>();
+        for (String[] v : VIX_CHANNELS) {
+            Channel ch = new Channel();
+            ch.id = "vix:" + v[1];
+            ch.vix = v[1];
+            ch.name = v[0];
+            String img = "https://images.vix.com/prd/channel/" + v[2];
+            ch.logo = img + "?tr=w-240,q-70";
+            ch.image = img + "?tr=w-960,q-60";
+            out.add(ch);
+        }
+        return out;
     }
 }

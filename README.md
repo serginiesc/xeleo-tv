@@ -36,6 +36,8 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
   vez en cuando; de día pasan nubes y parvadas de pájaros. Se pausa en cuanto abres una app.
 - **Clima** de tu ciudad en la línea de abajo (Open-Meteo, sin clave).
 - **Saludo y nombre de la tele** ("Buenas tardes, Sergio" · "Sergio TV"), editables desde la tele.
+- **Aro de luz** en la app seleccionada: una franja que le da la vuelta (con los colores de tu equipo el día
+  que juega). Mientras te mueves por la fila el marco queda quieto; la luz arranca al detenerte.
 - **Tus apps, solo las que eliges:** al principio salen las primeras 6; las demás quedan en Todas las apps.
   - En el inicio, deja presionado OK sobre una app para moverla con ◀ ▶, o quitarla con ▼.
   - En Todas las apps, deja presionado OK para ponerla o quitarla del inicio (las del inicio llevan ✓).
@@ -59,15 +61,20 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
   canal y la cuenta regresiva; si gana, festeja. Los demás días, su botón abre su último partido y la tabla.
 - **Panel del partido:** OK sobre un partido de "Hoy" abre marcador por periodo, líderes, comparativa de
   equipos, la tabla de su grupo y el próximo partido. ◀ ▶ pasan a los otros partidos; mientras se juega se
-  actualiza cada 30 s. Si el partido va por una app de la tele (Prime Video, Disney+…), trae el botón para verlo.
+  actualiza cada 30 s.
+- **Dónde verlo:** en el panel, los canales que da ESPN y por dónde suele ir en México esa liga (ViX, TUDN,
+  Azteca 7, Canal 5, ESPN/Disney+, Fox…), con el botón para abrir la app si la tienes.
 - **Avisos** encima de cualquier app 15 minutos antes, al empezar, al anotar y al terminar. Se pueden apagar, por
   si ves el partido con retraso y no quieres enterarte antes.
 - Datos de ESPN (servicio público sin clave, no oficial: puede cambiar).
 
 ### En vivo (menú rápido → En vivo, apagado de fábrica)
 
-- Una pestaña con los **canales gratis de Pluto TV**, con un botón por categoría y cuántos canales tiene
-  ("Noticias · 7", "Deportes · 10"…). Basta pasar por un botón para ver sus canales.
+- Una pestaña con los **canales gratis de Pluto TV y ViX**, con un botón por categoría y cuántos canales tiene
+  ("Noticias · 7", "Deportes en vivo · 11", "ViX · 10"…). Basta pasar por un botón para ver sus canales.
+- **Deportes en vivo:** los deportivos de Pluto (NFL Channel, Azteca Deportes, UFC…) junto con ViX Deportes 24/7.
+- **ViX:** sus canales gratis (N+, N+ Foro, ViX Deportes, novelas…); OK abre la app de ViX en ese canal. ViX no
+  publica su programación, así que esos no traen horario.
 - **Mis canales:** el primer botón. De fábrica trae TV abierta mexicana, noticias y NFL Channel; deja presionado
   OK sobre cualquier canal para agregarlo o quitarlo (los tuyos llevan ★).
 - **Ocultar canales** que no te interesan, con el mismo OK sostenido; quedan en el botón "Ocultos" por si los
@@ -75,10 +82,11 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 - **Recordatorios:** en ese mismo menú, "Recordar" el siguiente programa del canal; 5 minutos antes sale un aviso
   encima de lo que estés viendo.
 - Arriba, una **vista previa** del canal seleccionado: imagen, programa, descripción y cuánto falta.
-- OK abre el canal en la app **Pluto TV** (instálala desde Play Store; si no está, XELEO te lleva ahí). XELEO
+- OK abre el canal en la app **Pluto TV** o **ViX** (instálalas desde Play Store; si no están, XELEO te lleva ahí). XELEO
   solo muestra la guía, el video lo pone Pluto. La guía se precarga desde el inicio, así que la pestaña abre
   al instante.
-- Guía de Pluto TV (pública, sin clave, no oficial: puede cambiar).
+- Guía de Pluto TV (pública, sin clave, no oficial: puede cambiar). Los anuncios al entrar a un canal son de
+  Pluto o ViX; XELEO no los controla.
 
 ### Sin internet y al reinstalar
 
@@ -179,3 +187,6 @@ avisa y se detiene. El número de versión es la cantidad de commits (1.12, 1.13
 ## Licencia
 
 [MIT](LICENSE) © 2026 Sergio Escobedo. La fuente Outfit conserva su propia licencia (SIL OFL 1.1).
+
+Si haces tu propia versión, la licencia te pide conservar este aviso y el nombre del autor; XELEO lo muestra en
+menú rápido → **Acerca de**, así que basta con no quitarlo.

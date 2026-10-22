@@ -42,6 +42,36 @@ final class SportsStripView extends HorizontalScrollView {
         setVisibility(GONE);
     }
 
+    /**
+     * ◀ ▶ go exactly to the chip beside, and stop at the ends. Android's own focus search, in a row that scrolls,
+     * sometimes jumped from a chip up to the tabs.
+     */
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent e) {
+        int k = e.getKeyCode();
+        View focused = findFocus();
+        if ((k == android.view.KeyEvent.KEYCODE_DPAD_LEFT || k == android.view.KeyEvent.KEYCODE_DPAD_RIGHT)
+                && focused != null && focused.getParent() == row) {
+            if (e.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                int step = k == android.view.KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1;
+                for (int i = row.indexOfChild(focused) + step; i >= 0 && i < row.getChildCount(); i += step) {
+                    View next = row.getChildAt(i);
+                    if (!next.isFocusable()) continue;
+                    next.requestFocus();
+                    int margin = dp(40);
+                    boolean firstChip = true;   // back at the start: show the "Hoy" label too
+                    for (int j = 0; j < i; j++) if (row.getChildAt(j).isFocusable()) firstChip = false;
+                    if (firstChip) smoothScrollTo(0, 0);
+                    else if (next.getRight() + margin > getScrollX() + getWidth()) smoothScrollTo(next.getRight() + margin - getWidth(), 0);
+                    else if (next.getLeft() - margin < getScrollX()) smoothScrollTo(Math.max(0, next.getLeft() - margin), 0);
+                    break;
+                }
+            }
+            return true;
+        }
+        return super.dispatchKeyEvent(e);
+    }
+
     void show(List<Sports.Game> games, String myAbbr, int myColor) {
         row.removeAllViews();
         if (games.isEmpty()) {
@@ -78,16 +108,19 @@ final class SportsStripView extends HorizontalScrollView {
             ids[k] = g.id;
             paths[k] = g.path;
             leagues[k] = g.leagueKey;
-            casts[k] = g.broadcast;
+            casts[k] = TextUtils.join(", ", g.channels);
             int at = k++;
             View chip = chip(g, !myAbbr.isEmpty() && g.side(myAbbr) != null, myColor);
             chip.setOnClickListener(v -> GameActivity.open(getContext(), ids, paths, leagues, casts, at));
             row.addView(chip);
         }
-        // Centre the row when it is narrower than the screen.
+        Rows.fence(row);
+        // Centre the row when it is narrower than the screen, with padding: moving it (setTranslationX) would put
+        // the chips where the remote's focus search doesn't expect them, and ▶ would jump to another row.
+        row.setPadding(dp(40), dp(6), dp(40), dp(6));
         post(() -> {
             int extra = getWidth() - row.getWidth();
-            row.setTranslationX(extra > 0 ? extra / 2f : 0);
+            if (extra > 0) row.setPadding(dp(40) + extra / 2, dp(6), dp(40), dp(6));
         });
     }
 

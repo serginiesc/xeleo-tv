@@ -42,6 +42,9 @@ final class GameStats {
 
     String topLine = "", state = "pre", status = "", sport = "", groupName = "", footer = "", footerLogo = "";
     String broadcast = "";
+    /** Dónde verlo: the channels ESPN lists (mostly the US ones) and where the league usually airs in Mexico. */
+    final List<String> where = new ArrayList<>();
+    String[] mexico = {};
     String[] heads = {"G-P", "Dif", "Racha"};
     String[] periodHeads = {};
     final Side left = new Side(), right = new Side();
@@ -69,7 +72,16 @@ final class GameStats {
         JSONObject s = Sports.get("https://site.api.espn.com/apis/site/v2/sports/" + path + "/summary?event=" + eventId);
         GameStats g = new GameStats();
         g.sport = league != null ? league.sport : "";
-        g.broadcast = broadcast == null ? "" : broadcast;
+        // "ESPN, ABC, Disney+" from the Hoy row, then what the summary adds.
+        for (String n : (broadcast == null ? "" : broadcast).split(",\\s*")) if (!n.isEmpty()) g.where.add(n);
+        JSONArray casts = s.optJSONArray("broadcasts");
+        for (int i = 0; casts != null && i < casts.length(); i++) {
+            JSONObject media = casts.optJSONObject(i).optJSONObject("media");
+            String n = media == null ? "" : media.optString("shortName");
+            if (!n.isEmpty() && !g.where.contains(n)) g.where.add(n);
+        }
+        g.broadcast = g.where.isEmpty() ? "" : g.where.get(0);
+        g.mexico = Sports.mexico(leagueKey);
         JSONObject comp = s.getJSONObject("header").getJSONArray("competitions").getJSONObject(0);
         long start = parseDate(comp.optString("date"));
         JSONObject status = comp.getJSONObject("status");
@@ -435,17 +447,10 @@ final class GameStats {
                 return;
             }
         }
+        // The stadium; the channels go in the "Dónde verlo" line (GameActivity).
         JSONObject info = s.optJSONObject("gameInfo");
         JSONObject venue = info == null ? null : info.optJSONObject("venue");
-        String where = venue == null ? "" : venue.optString("fullName");
-        String channel = g.broadcast;
-        if (channel.isEmpty()) {
-            JSONArray b = s.optJSONArray("broadcasts");
-            if (b != null && b.length() > 0 && b.optJSONObject(0).optJSONObject("media") != null) {
-                channel = b.optJSONObject(0).optJSONObject("media").optString("shortName");
-            }
-        }
-        g.footer = where + (where.isEmpty() || channel.isEmpty() ? "" : "  ·  ") + channel;
+        g.footer = venue == null ? "" : venue.optString("fullName");
     }
 
     private static String translate(String s, String[][] map) {

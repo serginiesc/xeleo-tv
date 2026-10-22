@@ -408,24 +408,40 @@ public class GameActivity extends Activity {
         LinearLayout f = new LinearLayout(this);
         f.setGravity(Gravity.CENTER_VERTICAL);
         boolean next = !g.footerLogo.isEmpty();
-        if (next) {
+        // Before and during the game: Dónde verlo, the channels ESPN gives and where it usually airs in Mexico.
+        boolean watchLine = !next && !g.state.equals("post") && (!g.where.isEmpty() || g.mexico.length > 0);
+        if (next || watchLine) {
             TextView label = text(8.5f, FAINT, medium);
             label.setLetterSpacing(0.06f);
-            label.setText("PRÓXIMO");
-            f.addView(label);
+            label.setText(next ? "PRÓXIMO" : "DÓNDE VERLO");
+            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(-2, -2);
+            llp.rightMargin = dp(10);
+            f.addView(label, llp);
+        }
+        if (next) {
             ImageView logo = new ImageView(this);
             Logos.into(logo, g.footerLogo, 64);
             LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(dp(22), dp(22));
-            llp.setMargins(dp(12), 0, dp(8), 0);
+            llp.setMargins(dp(2), 0, dp(8), 0);
             f.addView(logo, llp);
         }
-        TextView t = text(11.5f, next ? TEXT : DIM, medium);
+        TextView t = text(11.5f, next || watchLine ? TEXT : DIM, medium);
         t.setSingleLine(true);
         t.setEllipsize(TextUtils.TruncateAt.END);
-        t.setText(g.footer);
+        if (watchLine) {
+            String espn = TextUtils.join(" · ", g.where);
+            String mx = g.mexico.length == 0 ? "" : "En México suele ir por " + TextUtils.join(", ", g.mexico);
+            t.setText(espn.isEmpty() ? mx : mx.isEmpty() ? espn : espn + "   ·   " + mx);
+        } else {
+            t.setText(g.footer);
+        }
         f.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        Intent watch = Sports.broadcastApp(this, g.broadcast);
+        // One button, for the first of those apps the TV has (◀ ▶ belong to the other games).
+        java.util.List<String> names = new java.util.ArrayList<>(g.where);
+        java.util.Collections.addAll(names, g.mexico);
+        java.util.List<Intent> apps = Sports.broadcastApps(this, names);
+        Intent watch = apps.isEmpty() ? null : apps.get(0);
         if (watch != null && !g.state.equals("post")) {
             TextView btn = text(11, TEXT, medium);
             btn.setText("Ver en " + label(watch));

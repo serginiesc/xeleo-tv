@@ -99,6 +99,8 @@ public class HomeActivity extends Activity {
     private boolean movingArmed;
     /** True from a long press in Todas las apps until OK is released, so that release doesn't open the app. */
     private boolean swallowOk;
+    /** The snake's colour on the focused app: white, or your team's on game day. */
+    private int ringColor = Color.WHITE;
 
     /** Fetches the weather as soon as the network is up: at boot Home starts before Wi-Fi connects. */
     private final android.net.ConnectivityManager.NetworkCallback networkUp =
@@ -561,6 +563,7 @@ public class HomeActivity extends Activity {
         Sports.load(this, (today, mine, next) -> {
             if (isFinishing()) return;
             myGame = mine;
+            ringColor = mine != null ? Sports.teamColor(this) : Color.WHITE;
             nextGame = next;
             sports.show(today, Sports.teamAbbr(this), Sports.teamColor(this));
             // The screen is 540 dp tall: with the "Hoy" row, the team logo and the player there is no room left for
@@ -659,6 +662,7 @@ public class HomeActivity extends Activity {
         add.setOnClickListener(v -> openApps());
         add.setOnKeyListener(null);
         appRow.addView(add, rowParams());
+        Rows.fence(appRow);
         if (firstCard == null) firstCard = add;
         if ("".equals(keep)) restore = add;
         if (restore != null) restore.requestFocus();
@@ -701,14 +705,12 @@ public class HomeActivity extends Activity {
             nlp.bottomMargin = dp(5);
             card.addView(n, nlp);
         }
-        View ring = new View(this);
+        SnakeRing ring = new SnakeRing(this, dp(10), dp(3));
         card.addView(ring, new FrameLayout.LayoutParams(-1, -1));
         card.setOnFocusChangeListener((v, f) -> {
             if (v == moving) return;   // a card being moved keeps its blue frame while it changes place
-            GradientDrawable b = new GradientDrawable();
-            b.setCornerRadius(dp(10));
-            b.setStroke(dp(3), Color.WHITE);
-            ring.setBackground(f ? b : null);
+            ring.setColor(ringColor);
+            ring.setOn(f);
             v.setPivotX(v.getWidth() / 2f);
             v.setPivotY(v.getHeight() / 2f);
             if (f) keepInView(v);
@@ -830,6 +832,7 @@ public class HomeActivity extends Activity {
                 appRow.addView(card, j);
                 home.add(j, home.remove(i));
                 firstCard = appRow.getChildAt(0);
+                Rows.fence(appRow);
                 card.requestFocus();
                 keepInView(card);
             }
@@ -868,10 +871,7 @@ public class HomeActivity extends Activity {
     private void startMove(View card) {
         moving = card;
         movingArmed = false;
-        GradientDrawable b = new GradientDrawable();
-        b.setCornerRadius(dp(10));
-        b.setStroke(dp(4), 0xFF8AB4F8);
-        ringOf(card).setBackground(b);
+        ringOf(card).setMoving(true);
         card.animate().scaleX(1.18f).scaleY(1.18f).setDuration(140).start();
         phaseLabel.setText("Mueve con ◀ ▶  ·  ▼ lo quita del inicio  ·  OK para soltar");
     }
@@ -882,10 +882,8 @@ public class HomeActivity extends Activity {
         saveHome();
         if (card != null) {
             boolean f = card.hasFocus();
-            GradientDrawable b = new GradientDrawable();
-            b.setCornerRadius(dp(10));
-            b.setStroke(dp(3), Color.WHITE);
-            ringOf(card).setBackground(f ? b : null);
+            ringOf(card).setMoving(false);
+            ringOf(card).setOn(f);
             card.animate().scaleX(f ? 1.12f : 1f).scaleY(f ? 1.12f : 1f).setDuration(140).start();
         }
         shownPhase = null;   // repaint puts the phase line back
@@ -894,9 +892,9 @@ public class HomeActivity extends Activity {
     }
 
     /** The focus frame is the last child of a card. */
-    private static View ringOf(View card) {
+    private static SnakeRing ringOf(View card) {
         FrameLayout f = (FrameLayout) card;
-        return f.getChildAt(f.getChildCount() - 1);
+        return (SnakeRing) f.getChildAt(f.getChildCount() - 1);
     }
 
     /** Scrolls the row so the focused card keeps a margin from the screen edge, room for its frame. */
