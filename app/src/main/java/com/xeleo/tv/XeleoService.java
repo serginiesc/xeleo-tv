@@ -13,7 +13,8 @@ import java.util.Map;
 /**
  * XELEO TV's helper service. Accessibility services keep running while apps come and go and may do a few things an
  * ordinary app cannot, so this is where they live:
- * - a long press on the remote's Home (or its Settings key) opens the quick settings panel;
+ * - the remote's Settings key opens the quick settings panel (so does a long press on Home, where the system lets it
+ *   through; the onn keeps it);
  * - the system power menu (restart, power off) for the panel's Reiniciar tile;
  * - the sleep timer, which puts the TV to sleep with GLOBAL_ACTION_LOCK_SCREEN;
  * - the recent apps on Home: every app that comes to the screen, however it was opened.
@@ -100,7 +101,10 @@ public class XeleoService extends AccessibilityService {
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
-        if (event.getKeyCode() == KeyEvent.KEYCODE_SETTINGS) {
+        // The remote's Settings key: the onn's gear sends KEYCODE_NOTIFICATION, others KEYCODE_SETTINGS. Taken here,
+        // so Google TV's own panel (which the onn would open, and which isn't there without its launcher) doesn't.
+        int key = event.getKeyCode();
+        if (key == KeyEvent.KEYCODE_SETTINGS || key == KeyEvent.KEYCODE_NOTIFICATION) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) HomeActivity.openQuickSettings(this);
             return true;
         }
