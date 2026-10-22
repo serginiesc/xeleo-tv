@@ -1,10 +1,9 @@
 package com.xeleo.tv;
 
-import android.app.Activity;
+import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
@@ -30,10 +29,11 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The En vivo tab: Pluto TV's channels in rows, and on top a big preview of what the focused one shows now
- * (its picture, title, description and time left). OK opens the channel in the Pluto TV app.
+ * The En vivo tab, inside Home under its top bar: Pluto TV's and ViX's channels by category, and on top a big
+ * preview of what the focused one shows now (its picture, title, description and time left). OK opens the channel
+ * in its app. Home shows it when the En vivo tab is selected (open) and hides it otherwise (close).
  */
-public class LiveActivity extends Activity {
+final class LiveView extends FrameLayout {
 
     private static final int BG = 0xFF0B0F17;
     private static final int TEXT = 0xFFFFFFFF;
@@ -60,38 +60,36 @@ public class LiveActivity extends Activity {
         }
     };
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    LiveView(Context context) {
+        super(context);
         density = getResources().getDisplayMetrics().density;
         regular = getResources().getFont(R.font.outfit_regular);
         medium = getResources().getFont(R.font.outfit_medium);
 
-        FrameLayout root = new FrameLayout(this);
+        FrameLayout root = this;
         root.setBackgroundColor(BG);
-        heroImage = new ImageView(this);
+        heroImage = new ImageView(getContext());
         heroImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
         root.addView(heroImage, new FrameLayout.LayoutParams(-1, -1));
         // Dark from the left for the text, and from the bottom for the rows.
-        View left = new View(this);
+        View left = new View(getContext());
         left.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{BG, 0xF20B0F17, 0x990B0F17, 0x000B0F17}));
         root.addView(left, new FrameLayout.LayoutParams(-1, -1));
-        View bottom = new View(this);
+        View bottom = new View(getContext());
         bottom.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0x000B0F17, 0x330B0F17, 0xE60B0F17, BG, BG}));
         root.addView(bottom, new FrameLayout.LayoutParams(-1, -1));
 
-        root.addView(topBar(), new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
         root.addView(hero(), new FrameLayout.LayoutParams(dp(540), -2, Gravity.TOP | Gravity.START));
 
-        ScrollView scroll = new ScrollView(this);
+        ScrollView scroll = new ScrollView(getContext());
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setVerticalFadingEdgeEnabled(true);   // a row scrolled up fades instead of being cut
         scroll.setFadingEdgeLength(dp(28));
         scroll.setClipChildren(false);
         scroll.setClipToPadding(false);
-        rowsBox = new LinearLayout(this);
+        rowsBox = new LinearLayout(getContext());
         rowsBox.setOrientation(LinearLayout.VERTICAL);
         rowsBox.setClipChildren(false);
         rowsBox.setPadding(0, dp(56), 0, dp(24));   // the chips and cards sit low, under the preview
@@ -103,30 +101,43 @@ public class LiveActivity extends Activity {
         status.setVisibility(View.GONE);
         root.addView(status, new FrameLayout.LayoutParams(-1, dp(262), Gravity.BOTTOM));
 
-        setContentView(root);
         placeholders();
-        Live.load(this, this::onGuide);
     }
 
-    /** Back (or Home) leaves; it fades out the way it faded in. */
-    @Override
-    public void finish() {
-        super.finish();
-        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+    /** The tab was selected: the guide (from the cache, so at once) and the minute tick. */
+    void open() {
+        Live.load(getContext(), this::onGuide);
+        handler.removeCallbacks(minuteTick);
+        handler.postDelayed(minuteTick, 60_000);
+    }
+
+    /** Another tab was selected. */
+    void close() {
+        handler.removeCallbacks(minuteTick);
+        closeSheet();
+    }
+
+    /** ▼ from the top bar: into the cards (or the chips while there are none). */
+    void focusContent() {
+        if (cardsLine != null && cardsLine.getChildCount() > 0 && cardsLine.getChildAt(0).isFocusable()) {
+            cardsLine.getChildAt(0).requestFocus();
+        } else if (chips.get(selected) != null) {
+            chips.get(selected).requestFocus();
+        }
     }
 
     /** Dim empty cards, gently pulsing, for the moment the guide takes when Home couldn't fetch it ahead. */
     private void placeholders() {
         for (int r = 0; r < 2; r++) {
-            View label = new View(this);
+            View label = new View(getContext());
             label.setBackground(round(0x1FFFFFFF, dp(4)));
             LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(dp(90), dp(14));
             llp.setMargins(dp(40), dp(12), 0, dp(10));
             rowsBox.addView(label, llp);
-            LinearLayout line = new LinearLayout(this);
+            LinearLayout line = new LinearLayout(getContext());
             line.setPadding(dp(40), dp(4), 0, dp(6));
             for (int i = 0; i < 5; i++) {
-                View card = new View(this);
+                View card = new View(getContext());
                 card.setBackground(round(0x14FFFFFF, dp(12)));
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(184), dp(96));
                 lp.rightMargin = dp(12);
@@ -142,23 +153,11 @@ public class LiveActivity extends Activity {
         rowsBox.setTag(pulse);
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        handler.removeCallbacks(minuteTick);
-        handler.postDelayed(minuteTick, 60_000);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        handler.removeCallbacks(minuteTick);
-    }
 
     // ---------------------------------------------------------------- top
 
     private View topBar() {
-        LinearLayout bar = new LinearLayout(this);
+        LinearLayout bar = new LinearLayout(getContext());
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(dp(40), dp(22), dp(40), 0);
         TextView name = text(19, TEXT, medium);
@@ -166,11 +165,11 @@ public class LiveActivity extends Activity {
         name.setShadowLayer(dp(6), 0, 0, 0x80000000);
         bar.addView(name);
         TextView source = text(13, TEXT_DIM, regular);
-        source.setText(Live.plutoInstalled(this) ? "Pluto TV y ViX  ·  OK abre el canal en su app"
+        source.setText(Live.plutoInstalled(getContext()) ? "Pluto TV y ViX  ·  OK abre el canal en su app"
                 : "Pluto TV y ViX  ·  Instala la app Pluto TV para ver sus canales");
         source.setPadding(dp(14), dp(3), 0, 0);
         bar.addView(source, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextClock clock = new TextClock(this);
+        TextClock clock = new TextClock(getContext());
         clock.setFormat12Hour("h:mm");
         clock.setFormat24Hour("H:mm");
         clock.setTextSize(26);
@@ -182,11 +181,11 @@ public class LiveActivity extends Activity {
     }
 
     private View hero() {
-        LinearLayout col = new LinearLayout(this);
+        LinearLayout col = new LinearLayout(getContext());
         col.setOrientation(LinearLayout.VERTICAL);
         col.setPadding(dp(40), dp(76), 0, 0);
 
-        LinearLayout line = new LinearLayout(this);
+        LinearLayout line = new LinearLayout(getContext());
         line.setGravity(Gravity.CENTER_VERTICAL);
         badge = text(11, TEXT, medium);
         badge.setLetterSpacing(0.08f);
@@ -216,9 +215,9 @@ public class LiveActivity extends Activity {
         description.setPadding(0, dp(8), dp(20), 0);
         col.addView(description);
 
-        FrameLayout track = new FrameLayout(this);
+        FrameLayout track = new FrameLayout(getContext());
         track.setBackground(round(0x40FFFFFF, dp(2)));
-        progressFill = new View(this);
+        progressFill = new View(getContext());
         progressFill.setBackground(round(TEXT, dp(2)));
         track.addView(progressFill, new FrameLayout.LayoutParams(0, -1));
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(dp(220), dp(3));
@@ -296,7 +295,8 @@ public class LiveActivity extends Activity {
     private FrameLayout sheet;
 
     private void onGuide(List<Live.Row> rows, String error) {
-        if (isFinishing() || isDestroyed()) return;
+        if (!isAttachedToWindow() && getParent() == null) return;
+        boolean hadFocus = findFocus() != null;
         if (rowsBox.getTag() instanceof android.animation.Animator) ((android.animation.Animator) rowsBox.getTag()).cancel();
         rowsBox.setTag(null);
         rowsBox.removeAllViews();
@@ -311,22 +311,22 @@ public class LiveActivity extends Activity {
         rowsBox.setAlpha(0f);
         rowsBox.animate().alpha(1f).setDuration(220).start();
 
-        HorizontalScrollView chipsScroll = new HorizontalScrollView(this);
+        HorizontalScrollView chipsScroll = new HorizontalScrollView(getContext());
         chipsScroll.setHorizontalScrollBarEnabled(false);
         chipsScroll.setClipChildren(false);
         chipsScroll.setClipToPadding(false);
-        chipsLine = new LinearLayout(this);
+        chipsLine = new LinearLayout(getContext());
         chipsLine.setClipChildren(false);
         chipsLine.setClipToPadding(false);
         chipsLine.setPadding(dp(40), dp(4), dp(40), dp(4));
         chipsScroll.addView(chipsLine);
         rowsBox.addView(chipsScroll);
 
-        cardsScroll = new HorizontalScrollView(this);
+        cardsScroll = new HorizontalScrollView(getContext());
         cardsScroll.setHorizontalScrollBarEnabled(false);
         cardsScroll.setClipChildren(false);
         cardsScroll.setClipToPadding(false);
-        cardsLine = new LinearLayout(this);
+        cardsLine = new LinearLayout(getContext());
         cardsLine.setClipChildren(false);
         cardsLine.setClipToPadding(false);   // the focused card grows into the padding; don't cut its frame
         cardsLine.setPadding(dp(40), dp(10), dp(40), dp(8));
@@ -342,7 +342,7 @@ public class LiveActivity extends Activity {
         showCards(null);
         View first = cardsLine.getChildCount() > 0 ? cardsLine.getChildAt(0) : chips.get(selected);
         if (first != null) {
-            first.post(first::requestFocus);
+            if (hadFocus) first.post(first::requestFocus);   // in the bar, the focus stays there
             if (first.getTag() instanceof Live.Channel) showHero((Live.Channel) first.getTag(), true);
         }
     }
@@ -350,9 +350,9 @@ public class LiveActivity extends Activity {
     /** The channels under a chip: Mis canales in their order, a category without the hidden ones, or the hidden. */
     private List<Live.Channel> channels(String key) {
         List<Live.Channel> out = new ArrayList<>();
-        Set<String> hidden = Live.hidden(this);
+        Set<String> hidden = Live.hidden(getContext());
         if (key.equals(FAVORITES)) {
-            for (String id : Live.favorites(this)) {
+            for (String id : Live.favorites(getContext())) {
                 Live.Channel ch = index.get(id);
                 if (ch != null && !hidden.contains(id)) out.add(ch);
             }
@@ -468,11 +468,11 @@ public class LiveActivity extends Activity {
 
     private void openSheet(Live.Channel ch) {
         closeSheet();
-        FrameLayout root = (FrameLayout) rowsBox.getRootView().findViewById(android.R.id.content);
-        sheet = new FrameLayout(this);
+        FrameLayout root = this;
+        sheet = new FrameLayout(getContext());
         sheet.setBackgroundColor(0x99000000);
         sheet.setClickable(true);
-        LinearLayout box = new LinearLayout(this);
+        LinearLayout box = new LinearLayout(getContext());
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(dp(18), dp(16), dp(18), dp(14));
         box.setBackground(round(0xFA161C26, dp(18)));
@@ -481,26 +481,26 @@ public class LiveActivity extends Activity {
         title.setPadding(dp(4), 0, 0, dp(10));
         box.addView(title);
 
-        boolean fav = Live.favorites(this).contains(ch.id);
-        boolean hidden = Live.hidden(this).contains(ch.id);
+        boolean fav = Live.favorites(getContext()).contains(ch.id);
+        boolean hidden = Live.hidden(getContext()).contains(ch.id);
         View first = option(box, fav ? "Quitar de Mis canales" : "★  Agregar a Mis canales", () -> {
-            Live.setFavorite(this, ch.id, !fav);
+            Live.setFavorite(getContext(), ch.id, !fav);
             done(ch, fav ? "Se quitó de Mis canales: " + ch.name : "Se agregó a Mis canales: " + ch.name);
         });
         option(box, hidden ? "Volver a mostrar" : "Ocultar canal", () -> {
-            Live.setHidden(this, ch.id, !hidden);
+            Live.setHidden(getContext(), ch.id, !hidden);
             done(ch, hidden ? "Se volvió a mostrar: " + ch.name : "Se ocultó: " + ch.name + " (queda en Ocultos)");
         });
         Live.Program now = ch.at(System.currentTimeMillis());
         Live.Program next = now != null ? ch.after(now) : null;
         if (next != null) {
             String key = Reminders.key(ch.id, next.start);
-            boolean set = Reminders.has(this, key);
+            boolean set = Reminders.has(getContext(), key);
             String when = hm.format(new Date(next.start));
             option(box, set ? "Quitar recordatorio de «" + next.title + "»"
                     : "Recordar «" + next.title + "» · " + when, () -> {
-                if (set) Reminders.remove(this, key);
-                else Reminders.add(this, key, next.title, ch.name, ch.logo, next.start);
+                if (set) Reminders.remove(getContext(), key);
+                else Reminders.add(getContext(), key, next.title, ch.name, ch.logo, next.start);
                 done(ch, set ? "Recordatorio quitado." : "Te aviso 5 min antes de las " + when + ", aunque estés en otra app.");
             });
         }
@@ -537,7 +537,7 @@ public class LiveActivity extends Activity {
         for (int i = 0; i < cardsLine.getChildCount(); i++) if (cardsLine.getChildAt(i).getTag() == ch) at = i;
         buildChips();
         showCards(ch.id);
-        View focus = getCurrentFocus();
+        View focus = findFocus();
         if ((focus == null || focus.getTag() != ch) && cardsLine.getChildCount() > 0) {
             View near = cardsLine.getChildAt(Math.max(0, Math.min(at, cardsLine.getChildCount() - 1)));
             if (near.isFocusable()) near.requestFocus();
@@ -551,35 +551,33 @@ public class LiveActivity extends Activity {
         sheet = null;
     }
 
-    @Override
-    public void onBackPressed() {
-        if (sheet != null) {
-            closeSheet();
-            showCards(null);
-            return;
-        }
-        super.onBackPressed();
+    /** Back while the channel menu is open closes it; true when it did. */
+    boolean back() {
+        if (sheet == null) return false;
+        closeSheet();
+        showCards(null);
+        return true;
     }
 
     private View card(Live.Channel ch) {
-        FrameLayout card = new FrameLayout(this);
+        FrameLayout card = new FrameLayout(getContext());
         card.setTag(ch);
         card.setFocusable(true);
         card.setClickable(true);
         card.setBackground(round(0x26FFFFFF, dp(12)));
-        LinearLayout col = new LinearLayout(this);
+        LinearLayout col = new LinearLayout(getContext());
         col.setOrientation(LinearLayout.VERTICAL);
         col.setPadding(dp(12), dp(10), dp(12), dp(8));
 
-        LinearLayout top = new LinearLayout(this);
+        LinearLayout top = new LinearLayout(getContext());
         top.setGravity(Gravity.CENTER_VERTICAL);
-        ImageView logo = new ImageView(this);
+        ImageView logo = new ImageView(getContext());
         logo.setScaleType(ImageView.ScaleType.FIT_START);
         top.addView(logo, new LinearLayout.LayoutParams(0, dp(22), 1f));
         Logos.into(logo, ch.logo, 0);
         long now = System.currentTimeMillis();
         Live.Program p = ch.at(now);
-        boolean star = Live.favorites(this).contains(ch.id) && !selected.equals(FAVORITES);   // in Mis canales
+        boolean star = Live.favorites(getContext()).contains(ch.id) && !selected.equals(FAVORITES);   // in Mis canales
         boolean vix = !ch.vix.isEmpty();
         if (p != null || star || vix) {
             TextView on = text(9, vix ? 0xFFFF9A62 : p != null && p.live ? 0xFFFF8A80 : TEXT_DIM, medium);
@@ -596,9 +594,9 @@ public class LiveActivity extends Activity {
         name.setText(p != null ? p.title : ch.name);
         name.setPadding(0, dp(8), 0, 0);
         col.addView(name);
-        FrameLayout track = new FrameLayout(this);
+        FrameLayout track = new FrameLayout(getContext());
         track.setBackground(round(0x33FFFFFF, dp(1)));
-        View fill = new View(this);
+        View fill = new View(getContext());
         fill.setBackground(round(0xE6FFFFFF, dp(1)));
         track.addView(fill, new FrameLayout.LayoutParams(0, -1));
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(-1, dp(2));
@@ -626,7 +624,7 @@ public class LiveActivity extends Activity {
         col.addView(when);
         card.addView(col, new FrameLayout.LayoutParams(-1, -1));
 
-        View ring = new View(this);
+        View ring = new View(getContext());
         card.addView(ring, new FrameLayout.LayoutParams(-1, -1));
         card.setOnFocusChangeListener((v, f) -> {
             GradientDrawable b = new GradientDrawable();
@@ -641,7 +639,7 @@ public class LiveActivity extends Activity {
                 handler.postDelayed(pendingHero, 160);   // not on every card while scrolling fast
             }
         });
-        card.setOnClickListener(v -> Live.open(this, ch));
+        card.setOnClickListener(v -> Live.open(getContext(), ch));
         card.setOnKeyListener(this::onCardKey);
         return card;
     }
@@ -661,7 +659,7 @@ public class LiveActivity extends Activity {
     }
 
     private TextView text(float sp, int color, Typeface tf) {
-        TextView t = new TextView(this);
+        TextView t = new TextView(getContext());
         t.setTextSize(sp);
         t.setTextColor(color);
         t.setTypeface(tf);

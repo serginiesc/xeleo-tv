@@ -30,6 +30,8 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
 ### El inicio
 
+- **Barra de arriba fija** en todas las secciones: **Inicio, Apps y En vivo** son pestañas que cambian con solo
+  pasar el selector (▼ entra, ▲ regresa a la pestaña en la que estás); **Gemini y Ajustes** se abren con OK.
 - **Paisaje que sigue la hora:** amanecer, día, atardecer y noche, calculados con la salida y puesta del sol de tu
   ciudad. Si llueve, nieva, hay tormenta o neblina, el paisaje lo muestra (con lluvia y relámpagos animados).
 - **Cielo vivo:** de noche las estrellas titilan y se desplazan despacio, con alguna estrella fugaz o un cometa de

@@ -26,6 +26,7 @@ import android.speech.RecognizerIntent;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.ViewGroup;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 import android.widget.FrameLayout;
@@ -188,7 +189,9 @@ public class HomeActivity extends Activity {
         page.setPadding(0, dp(26), 0, dp(16));
         root.addView(page, new FrameLayout.LayoutParams(-1, -1));
 
-        page.addView(topBar());
+        // The top bar sits above every tab (added last, below); this keeps its place in Home's column.
+        barSpace = new View(this);
+        page.addView(barSpace, new LinearLayout.LayoutParams(-1, dp(96)));
 
         teamLogo = new ImageView(this);
         teamLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -254,6 +257,18 @@ public class HomeActivity extends Activity {
         appsOverlay = appsOverlay();
         appsOverlay.setVisibility(View.GONE);
         root.addView(appsOverlay, new FrameLayout.LayoutParams(-1, -1));
+        this.root = root;
+        this.page = page;
+        bar = topBar();
+        FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(-1, -2, Gravity.TOP);
+        blp.topMargin = dp(26);
+        root.addView(bar, blp);
+        bar.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            if (b - t != barSpace.getLayoutParams().height) {
+                barSpace.getLayoutParams().height = b - t;
+                barSpace.requestLayout();
+            }
+        });
         confetti = new ConfettiView(this);
         root.addView(confetti, new FrameLayout.LayoutParams(-1, -1));
 
@@ -285,6 +300,8 @@ public class HomeActivity extends Activity {
         refreshSports();
         brandName.setText(Profile.tvName(this));   // may have changed in Personalizar
         livePill.setVisibility(Live.enabled(this) ? View.VISIBLE : View.GONE);
+        if (tab == TAB_LIVE && !Live.enabled(this)) selectTab(TAB_HOME);   // switched off meanwhile
+        else if (tab == TAB_LIVE && liveView != null) liveView.open();
         Live.prefetch(this);   // so En vivo opens with the guide already there
         // A newer XELEO on GitHub: a dot on Ajustes (Acerca de offers it).
         Updater.check(this, false, () -> settingsPill.setText(Updater.available(this) ? "Ajustes  •" : "Ajustes"));
@@ -319,7 +336,8 @@ public class HomeActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (moving != null) endMove();
-        else if (appsOverlay.getVisibility() == View.VISIBLE) closeApps();
+        else if (tab == TAB_LIVE && liveView != null && liveView.back()) return;
+        else if (tab != TAB_HOME) closeApps();
         else if (firstCard != null) firstCard.requestFocus();
     }
 
@@ -354,16 +372,22 @@ public class HomeActivity extends Activity {
         pills.setGravity(Gravity.CENTER_VERTICAL);
         pills.setPadding(dp(4), dp(4), dp(4), dp(4));
         pills.setBackground(glass(dp(22)));
-        pills.addView(pill("Inicio", true, v -> { closeApps(); if (firstCard != null) firstCard.requestFocus(); }));
-        pills.addView(pill("Apps", false, v -> openApps()));
-        livePill = pill("En vivo", false, v -> {
-            startActivity(new Intent(this, LiveActivity.class));
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-        });
+        // Inicio, Apps and En vivo are tabs: landing on one shows it, the bar stays. Gemini and Ajustes are actions,
+        // after a gap, and need OK.
+        tabPills.clear();
+        pills.addView(pill("Inicio", TAB_HOME, v -> focusContent()));
+        pills.addView(pill("Apps", TAB_APPS, v -> focusContent()));
+        livePill = pill("En vivo", TAB_LIVE, v -> focusContent());
         pills.addView(livePill);
-        pills.addView(pill("Gemini", false, v -> openAssistant()));
-        settingsPill = pill("Ajustes", false, v -> openQuickSettings());
+        View gap = new View(this);
+        gap.setBackgroundColor(GLASS_EDGE);
+        LinearLayout.LayoutParams gaplp = new LinearLayout.LayoutParams(1, dp(18));
+        gaplp.setMargins(dp(6), 0, dp(6), 0);
+        pills.addView(gap, gaplp);
+        pills.addView(pill("Gemini", -1, v -> openAssistant()));
+        settingsPill = pill("Ajustes", -1, v -> openQuickSettings());
         pills.addView(settingsPill);
+        Rows.fence(pills);   // ◀ on Inicio and ▶ on Ajustes stay in the bar
         brand.addView(pills);
         bar.addView(brand, new LinearLayout.LayoutParams(0, dp(44), 1f));
 
@@ -391,18 +415,116 @@ public class HomeActivity extends Activity {
         return bar;
     }
 
-    private TextView pill(String label, boolean selected, View.OnClickListener click) {
+    /** A pill of the top bar; tab is TAB_HOME, TAB_APPS or TAB_LIVE for a tab, -1 for an action. */
+    private TextView pill(String label, int tab, View.OnClickListener click) {
         TextView t = text(15, TEXT, medium);
         t.setText(label);
+        t.setTag(tab);
         t.setGravity(Gravity.CENTER);
         t.setPadding(dp(16), 0, dp(16), 0);
         t.setFocusable(true);
         t.setClickable(true);
         t.setOnClickListener(click);
         t.setLayoutParams(new LinearLayout.LayoutParams(-2, dp(34)));
-        stylePill(t, false, selected);
-        t.setOnFocusChangeListener((v, f) -> stylePill((TextView) v, f, selected));
+        if (tab >= 0) tabPills.add(t);
+        stylePill(t, false, tab == this.tab);
+        t.setOnFocusChangeListener((v, f) -> {
+            stylePill((TextView) v, f, tab == this.tab);
+            handler.removeCallbacks(pendingTab);
+            if (f && tab >= 0 && tab != this.tab) {
+                // Landing on a tab shows it (a moment later, so just passing over it on the way doesn't).
+                nextTab = tab;
+                handler.postDelayed(pendingTab, 140);
+            }
+        });
         return t;
+    }
+
+    static final int TAB_HOME = 0, TAB_APPS = 1, TAB_LIVE = 2;
+    /** The tab on screen; the bar stays above all of them. */
+    private int tab = TAB_HOME, nextTab;
+    private final List<TextView> tabPills = new ArrayList<>();
+    private final Runnable pendingTab = () -> selectTab(nextTab);
+    private FrameLayout root;
+    private LinearLayout page;
+    private View bar, barSpace;
+    private LiveView liveView;
+
+    /** Shows a tab under the bar; Home's own cards can't take the focus while another tab is up. */
+    private void selectTab(int t) {
+        if (t == TAB_LIVE && !Live.enabled(this)) t = TAB_HOME;
+        if (moving != null) endMove();
+        tab = t;
+        if (t == TAB_APPS) {
+            if (appsOverlay.getVisibility() != View.VISIBLE) {
+                appsHint.setText("OK la abre  ·  Mantén OK para ponerla o quitarla del inicio");
+                appsOverlay.setAlpha(0f);
+                appsOverlay.setVisibility(View.VISIBLE);
+                appsOverlay.animate().alpha(1f).setDuration(160).start();
+            }
+        } else {
+            appsOverlay.setVisibility(View.GONE);
+        }
+        if (t == TAB_LIVE) {
+            if (liveView == null) {
+                liveView = new LiveView(this);
+                root.addView(liveView, root.indexOfChild(bar), new FrameLayout.LayoutParams(-1, -1));
+            }
+            if (liveView.getVisibility() != View.VISIBLE) {
+                liveView.setAlpha(0f);
+                liveView.setVisibility(View.VISIBLE);
+                liveView.animate().alpha(1f).setDuration(180).start();
+            }
+            liveView.open();
+        } else if (liveView != null && liveView.getVisibility() == View.VISIBLE) {
+            liveView.close();
+            liveView.setVisibility(View.GONE);
+        }
+        page.setDescendantFocusability(t == TAB_HOME ? ViewGroup.FOCUS_AFTER_DESCENDANTS : ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        View f = getCurrentFocus();
+        for (TextView p : tabPills) stylePill(p, p == f, (int) p.getTag() == tab);
+    }
+
+    /** OK or ▼ on the bar: into the tab's content. */
+    private void focusContent() {
+        if (tab == TAB_APPS) {
+            if (appsGrid.getChildCount() > 0) appsGrid.getChildAt(0).requestFocus();
+        } else if (tab == TAB_LIVE) {
+            if (liveView != null) liveView.focusContent();
+        } else if (firstCard != null) {
+            firstCard.requestFocus();
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent e) {
+        // ▼ from the bar goes into the tab on screen (the focus search could pick something hidden).
+        View f = getCurrentFocus();
+        if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN && f != null && bar != null && isInside(f, bar) && tab != TAB_HOME) {
+            if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                handler.removeCallbacks(pendingTab);
+                focusContent();
+            }
+            return true;
+        }
+        // ▲ from the content into the bar lands on the tab on screen, not on whichever pill is nearest (that one
+        // would switch the tab).
+        if (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP && f != null && bar != null && !isInside(f, bar)
+                && moving == null && e.getAction() == KeyEvent.ACTION_DOWN) {
+            View up = android.view.FocusFinder.getInstance().findNextFocus(root, f, View.FOCUS_UP);
+            if (up != null && isInside(up, bar) && tab < tabPills.size()) {
+                tabPills.get(tab).requestFocus();
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(e);
+    }
+
+    private static boolean isInside(View v, View parent) {
+        for (View p = v; p != null; p = p.getParent() instanceof View ? (View) p.getParent() : null) {
+            if (p == parent) return true;
+        }
+        return false;
     }
 
     private void stylePill(TextView t, boolean focused, boolean selected) {
@@ -922,7 +1044,7 @@ public class HomeActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER_HORIZONTAL);
-        col.setPadding(0, dp(34), 0, dp(34));
+        col.setPadding(0, dp(96), 0, dp(34));   // below the top bar
         col.setClipChildren(false);
         TextView title = text(24, TEXT, medium);
         title.setText("Todas las apps");
@@ -969,16 +1091,14 @@ public class HomeActivity extends Activity {
     }
 
     private void openApps() {
-        appsHint.setText("OK la abre  ·  Mantén OK para ponerla o quitarla del inicio");
-        appsOverlay.setAlpha(0f);
-        appsOverlay.setVisibility(View.VISIBLE);
-        appsOverlay.animate().alpha(1f).setDuration(180).start();
-        if (appsGrid.getChildCount() > 0) appsGrid.getChildAt(0).requestFocus();
+        selectTab(TAB_APPS);
+        focusContent();
     }
 
+    /** Back to Inicio from any tab. */
     private void closeApps() {
-        if (appsOverlay.getVisibility() != View.VISIBLE) return;
-        appsOverlay.setVisibility(View.GONE);
+        if (tab == TAB_HOME) return;
+        selectTab(TAB_HOME);
         if (firstCard != null) firstCard.requestFocus();
     }
 
