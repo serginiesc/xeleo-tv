@@ -122,7 +122,7 @@ public class QuickSettingsActivity extends Activity {
         footer.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
         // Acerca de: the version, the author and the license (AboutActivity).
         TextView about = text(10, TEXT_DIM, regular);
-        about.setText("Acerca de");
+        about.setText(Updater.available(this) ? "Actualizar  •" : "Acerca de");
         about.setPadding(dp(10), dp(5), dp(10), dp(5));
         about.setFocusable(true);
         about.setClickable(true);

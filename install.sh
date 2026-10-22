@@ -66,5 +66,7 @@ fi
 "${A[@]}" settings put secure screensaver_components com.xeleo.tv/com.xeleo.tv.SceneryDream
 "${A[@]}" cmd package set-home-activity --user 0 com.xeleo.tv/.HomeActivity
 "${A[@]}" cmd role add-role-holder android.app.role.HOME com.xeleo.tv >/dev/null 2>&1 || true
+# Let XELEO install its own updates from GitHub (Android still asks for the OK on screen each time).
+"${A[@]}" appops set com.xeleo.tv REQUEST_INSTALL_PACKAGES allow >/dev/null 2>&1 || true
 "${A[@]}" input keyevent KEYCODE_HOME
 echo "XELEO TV installed. Home is now: $("${A[@]}" cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1)"

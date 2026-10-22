@@ -81,6 +81,8 @@ public class HomeActivity extends Activity {
     private TextView appsHint;
     /** The En vivo tab, shown only while it is on (Quick settings > En vivo). */
     private TextView livePill;
+    /** The Ajustes tab; it gets a dot when there is an update (Updater). */
+    private TextView settingsPill;
     private View firstCard;
     private LinearLayout recentsRow;
     private TextView tagline;
@@ -284,6 +286,8 @@ public class HomeActivity extends Activity {
         brandName.setText(Profile.tvName(this));   // may have changed in Personalizar
         livePill.setVisibility(Live.enabled(this) ? View.VISIBLE : View.GONE);
         Live.prefetch(this);   // so En vivo opens with the guide already there
+        // A newer XELEO on GitHub: a dot on Ajustes (Acerca de offers it).
+        Updater.check(this, false, () -> settingsPill.setText(Updater.available(this) ? "Ajustes  •" : "Ajustes"));
         lat = Profile.lat(this);
         lon = Profile.lon(this);
         updateScenery(false);
@@ -358,7 +362,8 @@ public class HomeActivity extends Activity {
         });
         pills.addView(livePill);
         pills.addView(pill("Gemini", false, v -> openAssistant()));
-        pills.addView(pill("Ajustes", false, v -> openQuickSettings()));
+        settingsPill = pill("Ajustes", false, v -> openQuickSettings());
+        pills.addView(settingsPill);
         brand.addView(pills);
         bar.addView(brand, new LinearLayout.LayoutParams(0, dp(44), 1f));
 

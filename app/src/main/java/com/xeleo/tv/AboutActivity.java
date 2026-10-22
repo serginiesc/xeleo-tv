@@ -60,8 +60,27 @@ public class AboutActivity extends Activity {
         card.addView(name);
         TextView version = text(13, TEXT_DIM, regular);
         version.setText("Versión " + version());
-        version.setPadding(0, dp(4), 0, dp(14));
+        version.setPadding(0, dp(4), 0, dp(10));
         card.addView(version);
+
+        // Updates from GitHub Releases (Updater).
+        LinearLayout update = new LinearLayout(this);
+        update.setGravity(Gravity.CENTER_VERTICAL);
+        status = text(12.5f, TEXT, regular);
+        status.setText("Buscando actualizaciones…");
+        update.addView(status, new LinearLayout.LayoutParams(0, -2, 1f));
+        button = text(13, TEXT, medium);
+        button.setPadding(dp(16), dp(8), dp(16), dp(8));
+        button.setFocusable(true);
+        button.setClickable(true);
+        button.setVisibility(android.view.View.GONE);
+        styleButton(false);
+        button.setOnFocusChangeListener((v, f) -> styleButton(f));
+        button.setOnClickListener(v -> onButton());
+        update.addView(button);
+        card.addView(update);
+        android.view.View gap = new android.view.View(this);
+        card.addView(gap, new LinearLayout.LayoutParams(1, dp(14)));
 
         TextView who = text(14, TEXT, regular);
         who.setText(COPYRIGHT + "\n" + REPO);
@@ -101,7 +120,69 @@ public class AboutActivity extends Activity {
         lp.setMargins(0, dp(20), 0, dp(20));
         root.addView(scroll, lp);
         setContentView(root);
+        this.scroll = scroll;
         scroll.requestFocus();
+        Updater.check(this, true, this::showUpdate);
+    }
+
+    private TextView status, button;
+    private ScrollView scroll;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (button != null && waitingPermission && Updater.allowed(this)) {
+            waitingPermission = false;   // came back from the permission screen with it given: go on
+            onButton();
+        }
+    }
+
+    private boolean waitingPermission;
+
+    private void showUpdate() {
+        if (isFinishing()) return;
+        if (Updater.available(this)) {
+            status.setText("Hay una versión nueva: " + Updater.latestName());
+            button.setText("Actualizar");
+            button.setVisibility(android.view.View.VISIBLE);
+            button.requestFocus();
+        } else {
+            status.setText(Updater.current(this) > 0 ? "Tienes la versión más reciente." : "");
+            button.setText("Buscar de nuevo");
+            button.setVisibility(android.view.View.VISIBLE);
+        }
+    }
+
+    private void onButton() {
+        if (!Updater.available(this)) {
+            status.setText("Buscando actualizaciones…");
+            Updater.check(this, true, this::showUpdate);
+            return;
+        }
+        if (!Updater.allowed(this)) {
+            // Android asks once: allow XELEO TV to install apps, then come back here.
+            waitingPermission = true;
+            status.setText("Permite «Instalar apps desconocidas» para XELEO TV y regresa.");
+            try {
+                startActivity(Updater.permissionScreen(this));
+            } catch (Exception e) {
+                status.setText("Activa «Instalar apps desconocidas» para XELEO TV en Ajustes → Apps.");
+            }
+            return;
+        }
+        button.setEnabled(false);
+        Updater.install(this, (message, busy) -> {
+            status.setText(message);
+            button.setEnabled(!busy);
+        });
+    }
+
+    private void styleButton(boolean focused) {
+        GradientDrawable b = new GradientDrawable();
+        b.setCornerRadius(dp(16));
+        b.setColor(focused ? 0xFFE3E3E3 : 0xFF2A3640);
+        button.setBackground(b);
+        button.setTextColor(focused ? 0xFF1F1F1F : TEXT);
     }
 
     /** "1.15" from the APK. */
