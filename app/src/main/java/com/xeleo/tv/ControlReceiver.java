@@ -13,6 +13,8 @@ import android.content.Intent;
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.BACKUP    (writes the settings file, see Backup)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.RESTORE   (puts them back from it)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST   (a reminder card in a few seconds)
+ *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.OPEN_NOTIFICATION --es pkg com.google.android.tv.dfuservice
+ * (opens that app's notification, as tapping it would: here the remote's firmware update)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.GAMEDAY_PREVIEW --es moment live
  * (game day on Home with your team: morning, soon, live or won; off goes back to the real one; --ez photo false
  * shows only the colours, --ez poster true the poster instead of the news photo, --es league ligamx your team
@@ -52,6 +54,9 @@ public class ControlReceiver extends BroadcastReceiver {
             Reminders.add(context, "test-" + System.currentTimeMillis(), "Programa de prueba", "XELEO TV", "",
                     System.currentTimeMillis() + Reminders.AHEAD_MS + 5_000);
             setResultData("reminder in a few seconds");
+        } else if ("com.xeleo.tv.OPEN_NOTIFICATION".equals(action)) {
+            String pkg = intent.getStringExtra("pkg");
+            setResultData(pkg != null && MediaListener.open(pkg) ? "opened" : "no notification from " + pkg);
         } else if ("com.xeleo.tv.GAMEDAY_PREVIEW".equals(action)) {
             String m = intent.getStringExtra("moment");
             GameDay.preview = m == null || m.equals("off") ? null : m;
