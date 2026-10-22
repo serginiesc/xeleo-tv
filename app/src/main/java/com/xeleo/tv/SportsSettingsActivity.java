@@ -100,6 +100,10 @@ public class SportsSettingsActivity extends Activity {
             Sports.MyTeam t = Sports.myTeam(this, l.key);
             row(l.label, t == null ? "Elegir" : t.name, v -> showTeams(l));
         }
+        row("Foto del partido en el inicio", GameDay.photoOn(this) ? "Encendida" : "Apagada", v -> {
+            Sports.set(this, "photo", !GameDay.photoOn(this));
+            refresh(0);
+        });
         row("Avisos sobre otras apps", Sports.alerts(this) ? "Encendidos" : "Apagados", v -> {
             Sports.set(this, "alerts", !Sports.alerts(this));
             refresh(0);

@@ -88,8 +88,11 @@ public class HomeActivity extends Activity {
     private LinearLayout recentsRow;
     private TextView tagline;
     private SportsStripView sports;
-    private View teamTint;
-    private ImageView teamLogo;
+    /** Game day (GameDay): the colour and photo behind Home, and the block in place of the greeting. */
+    private GameDay.Backdrop backdrop;
+    private GameDay.Hero hero;
+    private GameDay.Moment heroMoment = GameDay.Moment.NONE;
+    private boolean previewCelebrated;
     private ConfettiView confetti;
     /** Your team's game today and its next one (Sports mode). */
     private Sports.Game myGame, nextGame;
@@ -127,6 +130,7 @@ public class HomeActivity extends Activity {
             }
             shownKind = null;
             updateScenery(true);
+            refreshSports();   // a game day preview (GameDay.preview)
         }
     };
 
@@ -178,10 +182,10 @@ public class HomeActivity extends Activity {
         root.addView(ambient, new FrameLayout.LayoutParams(-1, -1));
         precip = new PrecipView(this);
         root.addView(precip, new FrameLayout.LayoutParams(-1, -1));
-        // Game day: a wash of your team's colour over the sky.
-        teamTint = new View(this);
-        teamTint.setVisibility(View.GONE);
-        root.addView(teamTint, new FrameLayout.LayoutParams(-1, -1));
+        // Game day: your team's colour over the sky and a photo from its news.
+        backdrop = new GameDay.Backdrop(this);
+        backdrop.setVisibility(View.GONE);
+        root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
@@ -193,14 +197,12 @@ public class HomeActivity extends Activity {
         barSpace = new View(this);
         page.addView(barSpace, new LinearLayout.LayoutParams(-1, dp(96)));
 
-        teamLogo = new ImageView(this);
-        teamLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        teamLogo.setVisibility(View.GONE);
-        LinearLayout.LayoutParams tlogo = new LinearLayout.LayoutParams(dp(56), dp(56));
-        tlogo.gravity = Gravity.CENTER_HORIZONTAL;
-        tlogo.topMargin = dp(6);
-        tlogo.bottomMargin = -dp(20);
-        page.addView(teamLogo, tlogo);
+        hero = new GameDay.Hero(this, regular, medium, light);
+        hero.setVisibility(View.GONE);
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(-2, -2);
+        hlp.leftMargin = dp(30);
+        hlp.topMargin = dp(4);
+        page.addView(hero, hlp);
 
         greeting = text(46, TEXT, medium);
         greeting.setGravity(Gravity.CENTER);
@@ -250,6 +252,7 @@ public class HomeActivity extends Activity {
         rowScroll.addView(appRow);
         // Full width (the page has no side padding), so cards scroll to the screen edge.
         page.addView(rowScroll, new LinearLayout.LayoutParams(-1, -2));
+        rowScroll.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> backdrop.setEdge(t));
 
         page.addView(buttonBar());
         page.addView(footer());
@@ -652,36 +655,12 @@ public class HomeActivity extends Activity {
         String hello = owner.isEmpty() ? part : part + ", " + owner;
         String line = "Relájate  ·  Mira  ·  Explora";
         String abbr = Sports.teamAbbr(this), team = Sports.teamShort(this);
-        if (myGame != null && myGame.side(abbr) != null) {
-            Sports.Team me = myGame.side(abbr), them = myGame.other(abbr);
-            if (myGame.done()) {
-                boolean won = me.winner;
-                hello = won ? "¡Ganaron " + withArticle(team) + "!" : (isTie(me, them) ? "Empate " + withArticle(team)
-                        : "Perdieron " + withArticle(team));
-                line = me.abbr + "  " + me.score + " – " + them.score + "  " + them.abbr + "  ·  " + myGame.detail;
-            } else if (myGame.live()) {
-                hello = "¡Juegan " + withArticle(team) + "!";
-                line = me.abbr + "  " + me.score + " – " + them.score + "  " + them.abbr + "  ·  " + myGame.detail;
-            } else {
-                hello = "¡Hoy juegan " + withArticle(team) + "!";
-                String cd = Sports.countdown(myGame.start);
-                line = "vs " + them.shortName + "  ·  " + Sports.when(this, myGame.start)
-                        + (myGame.broadcast.isEmpty() ? "" : "  ·  " + myGame.broadcast) + (cd.isEmpty() ? "" : "  ·  " + cd);
-            }
-        } else if (nextGame != null && nextGame.side(abbr) != null) {
+        // On game day the hero takes this place (GameDay); after a loss or a tie Home looks as usual.
+        if (myGame == null && nextGame != null && nextGame.side(abbr) != null) {
             line = "Próximo: " + team + " vs " + nextGame.other(abbr).shortName + "  ·  " + Sports.when(this, nextGame.start);
         }
         greeting.setText(hello);
         tagline.setText(line);
-    }
-
-    /** "los Chiefs", but "Portugal" or "México" without an article. */
-    private static String withArticle(String team) {
-        return Sports.NATIONS_NAMES.contains(team) ? team : "los " + team;
-    }
-
-    private static boolean isTie(Sports.Team a, Sports.Team b) {
-        return !a.winner && !b.winner && a.score.equals(b.score);
     }
 
     // ---------------------------------------------------------------- sports mode
@@ -690,31 +669,97 @@ public class HomeActivity extends Activity {
         Sports.load(this, (today, mine, next) -> {
             if (isFinishing()) return;
             myGame = mine;
-            ringColor = mine != null ? Sports.teamColor(this) : Color.WHITE;
             nextGame = next;
             sports.show(today, Sports.myTeams(this));
-            // The screen is 540 dp tall: with the "Hoy" row, the team logo and the player there is no room left for
-            // Recientes, so they step aside while the row shows (the score matters more on game day).
-            recentsRow.setVisibility(sports.getVisibility() == View.VISIBLE ? View.GONE
-                    : recentsRow.getChildCount() > 0 ? View.VISIBLE : View.GONE);
-            boolean gameDay = mine != null;
-            teamLogo.setVisibility(gameDay ? View.VISIBLE : View.GONE);
-            teamTint.setVisibility(gameDay ? View.VISIBLE : View.GONE);
-            if (gameDay) {
-                Logos.into(teamLogo, Sports.teamLogo(this), 128);
-                int c = Sports.teamColor(this);
-                teamTint.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                        new int[]{(c & 0x00FFFFFF) | 0x59000000, (c & 0x00FFFFFF) | 0x1A000000, 0x00000000}));
-                Sports.Team me = mine.side(Sports.teamAbbr(this));
-                // A win gets confetti once per game, the first time Home shows the final.
-                android.content.SharedPreferences seen = getSharedPreferences("sports_seen", MODE_PRIVATE);
-                if (mine.done() && me != null && me.winner && !mine.id.equals(seen.getString("celebrated", ""))) {
-                    seen.edit().putString("celebrated", mine.id).apply();
-                    confetti.burst(Sports.teamColor(this), Sports.teamAltColor(this));
-                }
-            }
+            showGameDay(mine, next);
+            // The screen is 540 dp tall: with the "Hoy" row or the hero and the player there is no room left for
+            // Recientes, so they step aside then (the score matters more on game day).
+            recentsRow.setVisibility(sports.getVisibility() == View.VISIBLE || hero.getVisibility() == View.VISIBLE
+                    ? View.GONE : recentsRow.getChildCount() > 0 ? View.VISIBLE : View.GONE);
             updateGreeting();
         });
+    }
+
+    /**
+     * Game day (GameDay): in the morning a quiet line over a light wash and a faint photo, with the "Hoy" row still
+     * there; from three hours before, during the game and after a win, the hero alone with the full colour and photo.
+     */
+    private void showGameDay(Sports.Game mine, Sports.Game next) {
+        Sports.MyTeam team = Sports.focus(this);
+        String abbr = team == null ? "" : team.abbr;
+        Sports.Game game = mine;
+        GameDay.Moment m = GameDay.moment(mine, abbr);
+        String preview = GameDay.preview;
+        if (preview != null && team != null) {
+            game = GameDay.sample(preview, team, next);
+            m = GameDay.moment(game, abbr);
+        }
+        String shortName = team == null ? "" : team.shortName.isEmpty() ? team.name : team.shortName;
+        String logo = team == null ? "" : team.logo, league = team == null ? "" : team.league;
+        String teamId = team == null ? "" : team.id;
+        int color = team == null ? 0xFF5E6874 : team.color;
+        if (m == GameDay.Moment.WON && preview == null) {
+            GameDay.rememberWin(this, game, team);
+            // A win gets confetti once per game, the first time Home shows the final.
+            android.content.SharedPreferences seen = getSharedPreferences("sports_seen", MODE_PRIVATE);
+            if (!game.id.equals(seen.getString("celebrated", ""))) {
+                seen.edit().putString("celebrated", game.id).apply();
+                confetti.burst(color, team.alt);
+            }
+        } else if (mine == null && preview == null && Sports.enabled(this)) {
+            // After midnight the scoreboard no longer has last night's win: it stays until the morning.
+            GameDay.Win win = GameDay.lastWin(this);
+            if (win != null) {
+                game = win.game;
+                m = GameDay.Moment.WON;
+                abbr = win.abbr;
+                shortName = win.shortName;
+                logo = win.logo;
+                league = win.league;
+                teamId = win.teamId;
+                color = win.color;
+            }
+        }
+        // The preview's win gets its confetti too, once each time it is asked for.
+        if (m == GameDay.Moment.WON && preview != null && !previewCelebrated) confetti.burst(color, team.alt);
+        previewCelebrated = m == GameDay.Moment.WON && preview != null;
+        heroMoment = m;
+        boolean on = m != GameDay.Moment.NONE;
+        hero.setVisibility(on ? View.VISIBLE : View.GONE);
+        greeting.setVisibility(on ? View.GONE : View.VISIBLE);
+        tagline.setVisibility(on ? View.GONE : View.VISIBLE);
+        if (on && m != GameDay.Moment.MORNING) sports.setVisibility(View.GONE);
+        backdrop.setVisibility(on ? View.VISIBLE : View.GONE);
+        ringColor = on ? color : Color.WHITE;
+        if (!on) return;
+        boolean morning = m == GameDay.Moment.MORNING;
+        backdrop.set(color, morning ? 0.45f : 1f, GameDay.photoOn(this) ? (morning ? 0.45f : 1f) : 0f);
+        hero.show(m, game, abbr, shortName, logo);
+        Sports.Game shown = game;
+        String gameLeague = league;
+        hero.setOnClickListener(v -> {
+            if (!sports.open(shown.id)) {
+                GameActivity.open(this, new String[]{shown.id.equals("preview") ? "" : shown.id}, new String[]{shown.path},
+                        new String[]{gameLeague}, new String[]{shown.broadcast}, 0);
+            }
+        });
+        if (GameDay.photoOn(this)) {
+            GameDay.photo(league, teamId, (big, small) -> Logos.photo(big, small, b -> {
+                if (heroMoment != GameDay.Moment.NONE) backdrop.setPhoto(b);
+            }));
+        } else {
+            backdrop.setPhoto(null);
+        }
+        if (m == GameDay.Moment.WON) {
+            // The line under the score: the next game, once the schedule says.
+            String finished = game.id, me = abbr, lg = league, id = teamId;
+            new Thread(() -> {
+                Sports.Game n = Sports.nextGame(lg, id);
+                if (n == null || n.id.equals(finished) || n.side(me) == null) return;
+                String text = "Próximo: vs " + n.other(me).shortName + "  ·  " + Sports.when(this, n.start);
+                runOnUiThread(() -> { if (heroMoment == GameDay.Moment.WON) hero.setNote(text); });
+            }, "gameday-next").start();
+        }
     }
 
     // ---------------------------------------------------------------- apps

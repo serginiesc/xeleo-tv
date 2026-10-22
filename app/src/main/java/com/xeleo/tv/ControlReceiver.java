@@ -13,6 +13,8 @@ import android.content.Intent;
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.BACKUP    (writes the settings file, see Backup)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.RESTORE   (puts them back from it)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST   (a reminder card in a few seconds)
+ *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.GAMEDAY_PREVIEW --es moment live
+ * (game day on Home with your team: morning, soon, live or won; off goes back to the real one)
  */
 public class ControlReceiver extends BroadcastReceiver {
 
@@ -48,6 +50,11 @@ public class ControlReceiver extends BroadcastReceiver {
             Reminders.add(context, "test-" + System.currentTimeMillis(), "Programa de prueba", "XELEO TV", "",
                     System.currentTimeMillis() + Reminders.AHEAD_MS + 5_000);
             setResultData("reminder in a few seconds");
+        } else if ("com.xeleo.tv.GAMEDAY_PREVIEW".equals(action)) {
+            String m = intent.getStringExtra("moment");
+            GameDay.preview = m == null || m.equals("off") ? null : m;
+            context.sendBroadcast(new Intent(REFRESH).setPackage(context.getPackageName()));
+            setResultData("game day preview " + GameDay.preview);
         }
     }
 }

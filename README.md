@@ -60,8 +60,12 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 - **Fila "Hoy"** con los partidos del día de las ligas que elijas (NFL, Liga MX, selecciones, NBA, MLB), con
   marcador en vivo.
 - **Tus equipos, uno por liga** (por ejemplo Chiefs en NFL y Santos en Liga MX). El inicio sigue al que juega
-  más pronto: el día que juega, se pinta con sus colores y muestra su logo, el rival, la hora, el canal y la cuenta
-  regresiva (y festeja si gana); los demás días dice cuál es tu próximo partido. En la fila Hoy, cada equipo tuyo
+  más pronto; los demás días dice cuál es tu próximo partido.
+- **Día de partido:** el inicio se pinta con los colores de tu equipo y, a la derecha, pone una foto reciente de
+  sus noticias en ESPN (cambia sola, sin notas tristes). En la mañana va suave; desde 3 horas antes, la cuenta
+  regresiva en grande; durante el juego, el marcador grande; si gana, "¡Ganaron!" con confeti hasta la mañana
+  siguiente. Si pierde, el inicio vuelve a la normalidad. OK sobre el marcador abre el panel del partido. La foto
+  se apaga en Ajustes > Deportes. En la fila Hoy, cada equipo tuyo
   que no juega trae su botón con su último partido y su tabla.
 - **Panel del partido:** OK sobre un partido de "Hoy" abre marcador por periodo, líderes, comparativa de
   equipos, la tabla de su grupo y el próximo partido. ◀ ▶ pasan a los otros partidos; mientras se juega se
@@ -173,6 +177,8 @@ clima), **Deportes** (ligas y tu equipo) y **En vivo**, si los quieres.
   (61 lluvia, 95 tormenta, 45 neblina, 71 nieve, 2 nubes, -1 el clima real).
 - **Ver un aviso de partido de ejemplo:**
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SPORTS_TEST`
+- **Ver el día de partido con tu equipo** (`morning`, `soon`, `live`, `won`; `off` vuelve al real):
+  `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.GAMEDAY_PREVIEW --es moment live`
 - **Ver un recordatorio de ejemplo** (sale en unos segundos):
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST`
 - **Guardar o restaurar los ajustes a mano:** `-a com.xeleo.tv.BACKUP` escribe
@@ -192,8 +198,8 @@ avisa y se detiene. El número de versión es la cantidad de commits (1.12, 1.13
   accesibilidad (botón Inicio largo, temporizador, reinicio, recientes y avisos de partidos); `install.sh` los
   activa.
 - Fuente: [Outfit](https://github.com/Outfitio/Outfit-Fonts), licencia SIL OFL 1.1 (`docs/licencias/OFL-Outfit.txt`).
-  Íconos: Material Icons de Google (Apache 2.0). Logos de equipos y canales: de ESPN y Pluto TV, se descargan al
-  usarse y no vienen en el repo.
+  Íconos: Material Icons de Google (Apache 2.0). Logos de equipos y canales, y las fotos del día de partido: de ESPN y
+  Pluto TV, se descargan al usarse y no vienen en el repo.
 
 ## Licencia
 

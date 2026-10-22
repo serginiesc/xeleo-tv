@@ -1,0 +1,551 @@
+package com.xeleo.tv;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.RadialGradient;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Game day on Home: your team's colour over the sky, a recent photo from its ESPN news on the right (Backdrop), and
+ * in place of the greeting a block that changes through the day (Hero): in the morning a quiet line, from three
+ * hours before a countdown, during the game the big score, and after a win "¡Ganaron!" until the next morning. A loss
+ * or a tie puts Home back as usual.
+ */
+final class GameDay {
+
+    enum Moment { NONE, MORNING, SOON, LIVE, WON }
+
+    /** From this long before kickoff the countdown and the full photo show. */
+    static final long SOON_MS = 3 * 3_600_000L;
+
+    private GameDay() {}
+
+    static Moment moment(Sports.Game g, String abbr) {
+        if (g == null || g.side(abbr) == null) return Moment.NONE;
+        if (g.live()) return Moment.LIVE;
+        if (g.done()) return g.side(abbr).winner ? Moment.WON : Moment.NONE;
+        return g.start - System.currentTimeMillis() > SOON_MS ? Moment.MORNING : Moment.SOON;
+    }
+
+    static boolean photoOn(Context c) {
+        return c.getSharedPreferences("sports", Context.MODE_PRIVATE).getBoolean("photo", true);
+    }
+
+    /** "los Chiefs", but "Portugal" or "México" without an article. */
+    static String withArticle(String team) {
+        return Sports.NATIONS_NAMES.contains(team) ? team : "los " + team;
+    }
+
+    // ---------------------------------------------------------------- the last win, until the next morning
+
+    /** A win kept after midnight, when the scoreboard no longer has it. */
+    static final class Win {
+        Sports.Game game;
+        String abbr, shortName, logo, league, teamId;
+        int color;
+    }
+
+    private static SharedPreferences seen(Context c) {
+        return c.getSharedPreferences("sports_seen", Context.MODE_PRIVATE);
+    }
+
+    static void rememberWin(Context c, Sports.Game g, Sports.MyTeam t) {
+        if (t == null || g.side(t.abbr) == null) return;
+        try {
+            Sports.Team me = g.side(t.abbr), them = g.other(t.abbr);
+            JSONObject o = new JSONObject().put("id", g.id).put("path", g.path).put("league", g.leagueKey)
+                    .put("detail", g.detail).put("at", System.currentTimeMillis())
+                    .put("abbr", t.abbr).put("short", t.shortName.isEmpty() ? t.name : t.shortName).put("logo", t.logo)
+                    .put("color", t.color).put("teamId", t.id).put("score", me.score)
+                    .put("them", them.abbr).put("themShort", them.shortName).put("themLogo", them.logo).put("themScore", them.score);
+            seen(c).edit().putString("win", o.toString()).apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** The last win if it is still yesterday night's (until 10 a.m.), else null. */
+    static Win lastWin(Context c) {
+        try {
+            JSONObject o = new JSONObject(seen(c).getString("win", "{}"));
+            if (!o.has("at")) return null;
+            Calendar until = Calendar.getInstance();
+            until.setTimeInMillis(o.getLong("at"));
+            until.add(Calendar.DAY_OF_YEAR, 1);
+            until.set(Calendar.HOUR_OF_DAY, 10);
+            until.set(Calendar.MINUTE, 0);
+            if (System.currentTimeMillis() > until.getTimeInMillis()) return null;
+            Win w = new Win();
+            Sports.Game g = new Sports.Game();
+            g.id = o.getString("id");
+            g.path = o.optString("path");
+            g.leagueKey = o.optString("league");
+            g.state = "post";
+            g.detail = o.optString("detail", "Final");
+            g.home.abbr = o.getString("abbr");
+            g.home.score = o.optString("score");
+            g.home.logo = o.optString("logo");
+            g.home.winner = true;
+            g.away.abbr = o.optString("them");
+            g.away.shortName = o.optString("themShort");
+            g.away.logo = o.optString("themLogo");
+            g.away.score = o.optString("themScore");
+            w.game = g;
+            w.abbr = g.home.abbr;
+            w.shortName = o.optString("short");
+            w.logo = g.home.logo;
+            w.league = g.leagueKey;
+            w.teamId = o.optString("teamId");
+            w.color = o.optInt("color", 0xFF5E6874);
+            return w;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ---------------------------------------------------------------- a sample over adb (ControlReceiver)
+
+    /** "morning", "soon", "live" or "won" to see that moment with your team now; null for the real one. */
+    static volatile String preview;
+
+    /** A made-up game of your team for the preview, against the rival of its next game when known. */
+    static Sports.Game sample(String moment, Sports.MyTeam t, Sports.Game next) {
+        Sports.Game g = new Sports.Game();
+        g.id = "preview";
+        g.leagueKey = t.league;
+        g.path = Sports.league(t.league) == null ? "" : Sports.league(t.league).paths[0];
+        g.home.abbr = t.abbr;
+        g.home.name = t.name;
+        g.home.shortName = t.shortName;
+        g.home.logo = t.logo;
+        Sports.Team rival = next != null && next.side(t.abbr) != null ? next.other(t.abbr) : null;
+        g.away.abbr = rival != null ? rival.abbr : "RIV";
+        g.away.shortName = rival != null ? rival.shortName : "Rival";
+        g.away.logo = rival != null ? rival.logo : "";
+        g.broadcast = next != null ? next.broadcast : "";
+        long now = System.currentTimeMillis();
+        switch (moment) {
+            case "morning":
+                g.start = now + 8 * 3_600_000L;
+                break;
+            case "soon":
+                g.start = now + 2 * 3_600_000L + 45 * 60_000L;
+                break;
+            case "live":
+                g.start = now - 3_600_000L;
+                g.state = "in";
+                g.detail = "nfl".equals(t.league) ? "2º  8:41" : "63'";
+                g.home.score = "nfl".equals(t.league) ? "14" : "2";
+                g.away.score = "nfl".equals(t.league) ? "10" : "1";
+                break;
+            default:
+                g.start = now - 3 * 3_600_000L;
+                g.state = "post";
+                g.detail = "Final";
+                g.home.score = "nfl".equals(t.league) ? "27" : "2";
+                g.away.score = "nfl".equals(t.league) ? "20" : "1";
+                g.home.winner = true;
+        }
+        return g;
+    }
+
+    // ---------------------------------------------------------------- the photo, from the team's news
+
+    interface PhotoCallback {
+        /** big is ESPN's 1296×729 cut of the picture, small the one the article lists (if big doesn't load). */
+        void onPhoto(String big, String small);
+    }
+
+    private static final Map<String, String[]> PHOTO = new ConcurrentHashMap<>();
+    private static final Map<String, Long> PHOTO_AT = new ConcurrentHashMap<>();
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    /** Headlines that are not for a celebration (ESPN's news are in English). */
+    private static final String[] SAD = {"dead", "death", "dies", "died", "mourn", "funeral", "arrest", "charged",
+            "suspend", "injur", "surgery", "torn", "out for", "lawsuit", "fired", "accus", "crash", "shooting"};
+    private static final long FRESH_DAYS = 21;
+
+    /**
+     * The newest fitting photo of the team's ESPN news, looked up again every three hours: from the last three weeks,
+     * about this team (one or two teams tagged, not a league-wide list), and not about deaths, arrests, injuries or
+     * suspensions. Calls back on the main thread, with nothing when no article fits.
+     */
+    static void photo(String leagueKey, String teamId, PhotoCallback cb) {
+        String key = leagueKey + ":" + teamId;
+        String[] hit = PHOTO.get(key);
+        Long at = PHOTO_AT.get(key);
+        if (hit != null && at != null && System.currentTimeMillis() - at < 3 * 3_600_000L) {
+            if (hit.length == 2) cb.onPhoto(hit[0], hit[1]);
+            return;
+        }
+        Sports.League l = Sports.league(leagueKey);
+        if (l == null || teamId.isEmpty()) return;
+        new Thread(() -> {
+            String[] found = find(l.paths[0], teamId);
+            PHOTO.put(key, found == null ? new String[0] : found);
+            PHOTO_AT.put(key, System.currentTimeMillis());
+            if (found != null) MAIN.post(() -> cb.onPhoto(found[0], found[1]));
+        }, "gameday-photo").start();
+    }
+
+    private static String[] find(String path, String teamId) {
+        try {
+            JSONObject d = Sports.get("https://site.api.espn.com/apis/site/v2/sports/" + path + "/news?team=" + teamId + "&limit=25");
+            JSONArray articles = d.optJSONArray("articles");
+            SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT);
+            iso.setTimeZone(TimeZone.getTimeZone("UTC"));
+            long now = System.currentTimeMillis();
+            for (int i = 0; articles != null && i < articles.length(); i++) {
+                JSONObject a = articles.getJSONObject(i);
+                String published = a.optString("published");
+                if (published.length() < 19) continue;
+                if (now - iso.parse(published.substring(0, 19)).getTime() > FRESH_DAYS * 86_400_000L) continue;
+                int teams = 0;
+                JSONArray cats = a.optJSONArray("categories");
+                for (int k = 0; cats != null && k < cats.length(); k++) {
+                    if ("team".equals(cats.getJSONObject(k).optString("type"))) teams++;
+                }
+                if (teams < 1 || teams > 2) continue;
+                String text = (a.optString("headline") + " " + a.optString("description")).toLowerCase(Locale.ROOT);
+                boolean sad = false;
+                for (String w : SAD) if (text.contains(w)) sad = true;
+                if (sad) continue;
+                JSONArray images = a.optJSONArray("images");
+                for (int k = 0; images != null && k < images.length(); k++) {
+                    JSONObject img = images.getJSONObject(k);
+                    String url = img.optString("url");
+                    if (!"header".equals(img.optString("type")) || !url.contains("a.espncdn.com/photo/")) continue;
+                    // ESPN keeps every cut of a photo; the wide one fits the screen.
+                    String big = url.replaceFirst("_\\d+x\\d+_(16-9|3-2|4-3|1-1)\\.", "_1296x729_16-9.");
+                    return new String[]{big, url};
+                }
+            }
+        } catch (Exception ignored) {
+            // No network or a changed answer: just the colours this time.
+        }
+        return null;
+    }
+
+    // ---------------------------------------------------------------- what is drawn behind Home
+
+    /**
+     * The team's colour washed over the sky, strong on the left where the hero is, and the photo on the right, a bit
+     * darker so white text reads over it, fading out to the left, above the app row and behind the tabs.
+     */
+    static final class Backdrop extends View {
+        private int color = 0xFF5E6874;
+        private float strength = 1f, photoAlpha = 1f;
+        private Bitmap photo;
+        /** Where it fades out: the top of the app row. */
+        private int edge;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint mask = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final ColorMatrixColorFilter grade;
+
+        Backdrop(Context c) {
+            super(c);
+            ColorMatrix cm = new ColorMatrix();
+            cm.setSaturation(1.1f);
+            ColorMatrix dark = new ColorMatrix();
+            dark.setScale(0.78f, 0.78f, 0.78f, 1f);
+            cm.postConcat(dark);
+            grade = new ColorMatrixColorFilter(cm);
+        }
+
+        void set(int color, float strength, float photoAlpha) {
+            if (color == this.color && strength == this.strength && photoAlpha == this.photoAlpha) return;
+            this.color = color;
+            this.strength = strength;
+            this.photoAlpha = photoAlpha;
+            invalidate();
+        }
+
+        void setPhoto(Bitmap b) {
+            if (b == photo) return;
+            photo = b;
+            invalidate();
+        }
+
+        void setEdge(int y) {
+            if (y == edge) return;
+            edge = y;
+            invalidate();
+        }
+
+        private int tint(float alpha) {
+            return ((int) Math.max(0, Math.min(255, alpha)) << 24) | (color & 0x00FFFFFF);
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            int w = getWidth(), h = getHeight();
+            if (w == 0 || h == 0) return;
+            float b = edge > 0 ? edge : h * 0.65f;
+            mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+
+            // The colour: left to right, light behind the tabs and the clock, gone at the app row.
+            int layer = c.saveLayer(0, 0, w, b, null);
+            paint.setShader(new LinearGradient(0, 0, w, 0, new int[]{tint(215 * strength), tint(64 * strength),
+                    tint(64 * strength)}, new float[]{0f, 0.82f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, w, b, paint);
+            mask.setShader(new LinearGradient(0, 0, 0, b, new int[]{0x4D000000, 0x4D000000, 0xFF000000, 0xFF000000, 0},
+                    new float[]{0f, 0.2f, 0.34f, 0.86f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, w, b, mask);
+            c.restoreToCount(layer);
+
+            if (photo != null && photoAlpha > 0) {
+                float ph = b * 1.08f, pw = photo.getWidth() * ph / photo.getHeight(), x0 = w - pw;
+                float k = ph / 760f;   // the mock-up's units
+                layer = c.saveLayer(x0, 0, w, ph, null);
+                paint.setShader(null);
+                paint.setColorFilter(grade);
+                paint.setAlpha((int) (255 * photoAlpha));
+                c.drawBitmap(photo, null, new RectF(x0, 0, w, ph), paint);
+                paint.setColorFilter(null);
+                paint.setAlpha(255);
+                // Shade under the clock, inside the photo so it fades in from the left with it.
+                paint.setShader(new LinearGradient(0, 0, 0, 320 * k, (int) (140 * photoAlpha) << 24, 0, Shader.TileMode.CLAMP));
+                c.drawRect(x0, 0, w, 320 * k, paint);
+                paint.setShader(null);
+                // In from the left, out at the bottom.
+                mask.setShader(new LinearGradient(x0 + 40 * k, 0, x0 + 460 * k, 0, 0, 0xFF000000, Shader.TileMode.CLAMP));
+                c.drawRect(x0, 0, w, ph, mask);
+                mask.setShader(new LinearGradient(0, ph - 170 * k, 0, ph, 0xFF000000, 0, Shader.TileMode.CLAMP));
+                c.drawRect(x0, 0, w, ph, mask);
+                // Its top left corner (stadium ads, the scoreboard) sits behind the tabs: out.
+                mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+                float cx = x0 + 200 * k, cy = -30 * k;
+                RadialGradient corner = new RadialGradient(cx, cy, 560 * k, new int[]{0xFF000000, 0xFF000000, 0},
+                        new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP);
+                Matrix squash = new Matrix();
+                squash.setScale(1f, 0.58f, cx, cy);
+                corner.setLocalMatrix(squash);
+                mask.setShader(corner);
+                c.drawRect(x0, 0, w, ph, mask);
+                c.restoreToCount(layer);
+                // A veil of the colour where the photo starts.
+                paint.setShader(new LinearGradient(x0, 0, x0 + 700 * k, 0, new int[]{tint(0), tint(110 * photoAlpha), tint(0)},
+                        new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
+                c.drawRect(x0, 0, x0 + 700 * k, b, paint);
+            }
+            paint.setShader(null);
+            mask.setShader(null);
+        }
+    }
+
+    // ---------------------------------------------------------------- the block in place of the greeting
+
+    /** Left-aligned, over the colour; OK opens the game panel. */
+    static final class Hero extends LinearLayout {
+        private static final int GOLD = 0xFFFFB81C;
+        private final float density;
+        private final Typeface regular, medium, light;
+        private TextView note;
+
+        Hero(Context c, Typeface regular, Typeface medium, Typeface light) {
+            super(c);
+            this.regular = regular;
+            this.medium = medium;
+            this.light = light;
+            density = c.getResources().getDisplayMetrics().density;
+            setOrientation(VERTICAL);
+            setFocusable(true);
+            setClickable(true);
+            setPadding(dp(16), dp(10), dp(22), dp(12));
+            setOnFocusChangeListener((v, f) -> {
+                GradientDrawable bg = new GradientDrawable();
+                bg.setCornerRadius(dp(18));
+                bg.setColor(f ? 0x26FFFFFF : 0);
+                if (f) bg.setStroke(dp(2), 0x8CFFFFFF);
+                setBackground(bg);
+            });
+        }
+
+        /** Builds the block for this moment; abbr is your team in game. */
+        void show(Moment m, Sports.Game g, String abbr, String teamShort, String logo) {
+            removeAllViews();
+            note = null;
+            Sports.Team me = g.side(abbr), them = g.other(abbr);
+            String when = Sports.when(getContext(), g.start) + (g.broadcast.isEmpty() ? "" : "  ·  " + g.broadcast);
+            boolean nation = Sports.NATIONS_NAMES.contains(teamShort);
+            switch (m) {
+                case MORNING: {
+                    LinearLayout row = row();
+                    row.addView(logo(logo, 42));
+                    TextView t = text(24, 0xFFFFFFFF, medium);
+                    t.setText((nation ? "Hoy juega " : "Hoy juegan ") + withArticle(teamShort));
+                    t.setPadding(dp(12), 0, 0, 0);
+                    row.addView(t);
+                    addView(row);
+                    TextView line = text(14, 0xE6FFFFFF, regular);
+                    line.setText("vs " + them.shortName + "  ·  " + when);
+                    line.setPadding(dp(54), dp(4), 0, 0);
+                    addView(line);
+                    break;
+                }
+                case SOON: {
+                    LinearLayout row = row();
+                    row.addView(logo(logo, 56));
+                    LinearLayout names = new LinearLayout(getContext());
+                    names.setOrientation(VERTICAL);
+                    names.setPadding(dp(14), 0, 0, 0);
+                    TextView over = text(15, 0xDDFFFFFF, medium);
+                    over.setText(nation ? "HOY JUEGA" : "HOY JUEGAN LOS");
+                    over.setLetterSpacing(0.04f);
+                    names.addView(over);
+                    TextView name = text(46, 0xFFFFFFFF, medium);
+                    name.setText(teamShort);
+                    name.setFontVariationSettings("'wght' 700");
+                    name.setShadowLayer(dp(10), 0, dp(2), 0x80000000);
+                    names.addView(name);
+                    row.addView(names);
+                    addView(row);
+                    TextView line = text(15, 0xE6FFFFFF, medium);
+                    line.setText("vs " + them.shortName + "  ·  " + when);
+                    line.setPadding(0, dp(12), 0, 0);
+                    addView(line);
+                    LinearLayout box = new LinearLayout(getContext());
+                    box.setOrientation(VERTICAL);
+                    box.setPadding(dp(17), dp(10), dp(17), dp(10));
+                    box.setMinimumWidth(dp(275));
+                    GradientDrawable bg = new GradientDrawable();
+                    bg.setCornerRadius(dp(15));
+                    bg.setColor(0x5A000000);
+                    box.setBackground(bg);
+                    TextView label = text(11, GOLD, medium);
+                    label.setText("FALTAN");
+                    label.setLetterSpacing(0.1f);
+                    box.addView(label);
+                    TextView left = text(28, 0xFFFFFFFF, medium);
+                    String cd = Sports.countdown(g.start);
+                    left.setText(cd.isEmpty() ? "Por empezar" : cd.replace("faltan ", ""));
+                    left.setPadding(0, dp(4), 0, 0);
+                    box.addView(left);
+                    LayoutParams blp = new LayoutParams(-2, -2);
+                    blp.topMargin = dp(12);
+                    addView(box, blp);
+                    break;
+                }
+                default: {   // LIVE and WON: the score
+                    boolean live = m == Moment.LIVE;
+                    LinearLayout top = row();
+                    TextView pill = text(13, live ? 0xFFFFFFFF : 0xFF3C0412, medium);
+                    pill.setText(live ? "●  EN VIVO" : "¡GANARON!");
+                    pill.setFontVariationSettings(live ? "'wght' 600" : "'wght' 700");
+                    pill.setGravity(Gravity.CENTER);
+                    pill.setShadowLayer(0, 0, 0, 0);
+                    pill.setPadding(dp(14), 0, dp(14), 0);
+                    GradientDrawable pbg = new GradientDrawable();
+                    pbg.setCornerRadius(dp(12));
+                    pbg.setColor(live ? 0xF0E53935 : 0xF5000000 | (GOLD & 0xFFFFFF));
+                    pill.setBackground(pbg);
+                    top.addView(pill, new LayoutParams(-2, dp(24)));
+                    TextView state = text(14, 0xDDFFFFFF, medium);
+                    state.setText(g.detail.isEmpty() ? (live ? "En juego" : "Final") : g.detail);
+                    state.setPadding(dp(12), 0, 0, 0);
+                    top.addView(state);
+                    addView(top);
+                    LinearLayout score = row();
+                    score.addView(side(me, logo, 64));
+                    TextView mine = text(72, 0xFFFFFFFF, medium);
+                    mine.setText(me.score);
+                    mine.setFontVariationSettings("'wght' 700");
+                    mine.setShadowLayer(dp(10), 0, dp(2), 0x80000000);
+                    mine.setPadding(dp(16), 0, 0, 0);
+                    score.addView(mine);
+                    TextView dash = text(44, 0xCCFFFFFF, light);
+                    dash.setText("–");
+                    dash.setPadding(dp(18), 0, dp(18), 0);
+                    score.addView(dash);
+                    TextView theirs = text(72, 0xD9FFFFFF, light);
+                    theirs.setText(them.score);
+                    theirs.setShadowLayer(dp(10), 0, dp(2), 0x80000000);
+                    theirs.setPadding(0, 0, dp(18), 0);
+                    score.addView(theirs);
+                    score.addView(side(them, them.logo, 58));
+                    LayoutParams slp = new LayoutParams(-2, -2);
+                    slp.topMargin = dp(10);
+                    addView(score, slp);
+                    note = text(13, 0xCCFFFFFF, regular);
+                    note.setText(live ? (g.broadcast.isEmpty() ? "" : g.broadcast + "  ·  ") + "OK: panel del partido"
+                            : "OK: panel del partido");
+                    note.setPadding(0, dp(10), 0, 0);
+                    addView(note);
+                }
+            }
+        }
+
+        /** The line under the score (after a win: the next game, once known). */
+        void setNote(String s) {
+            if (note != null && !s.isEmpty()) note.setText(s);
+        }
+
+        private View side(Sports.Team t, String logo, int size) {
+            LinearLayout col = new LinearLayout(getContext());
+            col.setOrientation(VERTICAL);
+            col.setGravity(Gravity.CENTER_HORIZONTAL);
+            col.addView(logo(logo, size));
+            TextView abbr = text(13, 0xDDFFFFFF, medium);
+            abbr.setText(t.abbr);
+            abbr.setGravity(Gravity.CENTER);   // the column gives it its whole width
+            abbr.setPadding(0, dp(4), 0, 0);
+            col.addView(abbr);
+            return col;
+        }
+
+        private ImageView logo(String url, int size) {
+            ImageView iv = new ImageView(getContext());
+            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            iv.setLayoutParams(new LayoutParams(dp(size), dp(size)));
+            Logos.into(iv, url, 128);
+            return iv;
+        }
+
+        private LinearLayout row() {
+            LinearLayout r = new LinearLayout(getContext());
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            return r;
+        }
+
+        private TextView text(float sp, int color, Typeface tf) {
+            TextView t = new TextView(getContext());
+            t.setTextSize(sp);
+            t.setTextColor(color);
+            t.setTypeface(tf);
+            t.setIncludeFontPadding(false);
+            t.setShadowLayer(dp(6), 0, dp(1), 0x80000000);
+            return t;
+        }
+
+        private int dp(float v) {
+            return Math.round(v * density);
+        }
+    }
+}

@@ -94,6 +94,27 @@ final class Logos {
         });
     }
 
+    interface BitmapCallback {
+        void onBitmap(Bitmap b);
+    }
+
+    /** A big picture as a bitmap (game day's photo), trying fallback when url doesn't load; nothing if neither does. */
+    static void photo(String url, String fallback, BitmapCallback cb) {
+        Bitmap hit = PHOTOS.get(url);
+        if (hit != null) {
+            cb.onBitmap(hit);
+            return;
+        }
+        POOL.execute(() -> {
+            Bitmap b = fetchPhoto(url);
+            if (b == null && !fallback.isEmpty()) b = fetchPhoto(fallback);
+            if (b == null) return;
+            PHOTOS.put(url, b);
+            Bitmap done = b;
+            MAIN.post(() -> cb.onBitmap(done));
+        });
+    }
+
     /** Downloads a picture into the cache ahead of time (En vivo's first preview), unless it is there. */
     static void warm(String url) {
         if (url.isEmpty() || PHOTOS.get(url) != null) return;

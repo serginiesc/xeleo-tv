@@ -78,8 +78,23 @@ final class SportsStripView extends HorizontalScrollView {
         return null;
     }
 
+    /** What the row's chips open, for open(gameId). */
+    private String[] ids, paths, leagues, casts;
+
+    /** Opens the game panel on that game, with the row's games to page through; false if it isn't in the row. */
+    boolean open(String gameId) {
+        for (int i = 0; ids != null && i < ids.length; i++) {
+            if (gameId.equals(ids[i])) {
+                GameActivity.open(getContext(), ids, paths, leagues, casts, i);
+                return true;
+            }
+        }
+        return false;
+    }
+
     void show(List<Sports.Game> games, List<Sports.MyTeam> teams) {
         row.removeAllViews();
+        ids = null;
         if (games.isEmpty()) {
             setVisibility(GONE);
             return;
@@ -104,6 +119,10 @@ final class SportsStripView extends HorizontalScrollView {
         }
         int count = Math.min(games.size(), 12) + resting.size();
         String[] ids = new String[count], paths = new String[count], leagues = new String[count], casts = new String[count];
+        this.ids = ids;
+        this.paths = paths;
+        this.leagues = leagues;
+        this.casts = casts;
         int k = 0;
         for (Sports.MyTeam t : resting) {
             ids[k] = "";
