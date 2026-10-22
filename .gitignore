@@ -8,6 +8,6 @@ captures/
 *.apk
 
 # The TV settings install.sh saves, and the release signing key settings.
-respaldo-tv.json
+respaldo-tv*.json
 keystore.properties
 *.jks

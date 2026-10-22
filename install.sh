@@ -23,7 +23,7 @@ echo "If the TV asks \"Allow USB debugging?\", accept it."
 A=("$ADB" -s "$DEV" shell)
 
 PKG=com.xeleo.tv
-BACKUP=respaldo-tv.json   # the TV's settings, kept next to this script (not in git)
+BACKUP="respaldo-tv-${DEV//[:.]/_}.json"   # this TV's settings, kept next to this script (not in git)
 REMOTE="/sdcard/Android/data/$PKG/files/xeleo-respaldo.json"
 installed() { "${A[@]}" pm list packages "$PKG" | grep -q "package:$PKG\$"; }
 
