@@ -71,7 +71,7 @@ final class GameDay {
     static final class Win {
         Sports.Game game;
         String abbr, shortName, logo, league, teamId;
-        int color;
+        int color, alt;
     }
 
     private static SharedPreferences seen(Context c) {
@@ -85,7 +85,7 @@ final class GameDay {
             JSONObject o = new JSONObject().put("id", g.id).put("path", g.path).put("league", g.leagueKey)
                     .put("detail", g.detail).put("at", System.currentTimeMillis())
                     .put("abbr", t.abbr).put("short", t.shortName.isEmpty() ? t.name : t.shortName).put("logo", t.logo)
-                    .put("color", t.color).put("teamId", t.id).put("score", me.score)
+                    .put("color", t.color).put("alt", t.alt).put("teamId", t.id).put("score", me.score)
                     .put("them", them.abbr).put("themShort", them.shortName).put("themLogo", them.logo).put("themScore", them.score);
             seen(c).edit().putString("win", o.toString()).apply();
         } catch (Exception ignored) {
@@ -125,6 +125,7 @@ final class GameDay {
             w.league = g.leagueKey;
             w.teamId = o.optString("teamId");
             w.color = o.optInt("color", 0xFF5E6874);
+            w.alt = o.optInt("alt", 0xFFFFFFFF);
             return w;
         } catch (Exception e) {
             return null;
@@ -135,6 +136,8 @@ final class GameDay {
 
     /** "morning", "soon", "live" or "won" to see that moment with your team now; null for the real one. */
     static volatile String preview;
+    /** The preview without the photo (only the colours), or with the poster instead of the news photo. */
+    static volatile boolean previewNoPhoto, previewPoster;
 
     /** A made-up game of your team for the preview, against the rival of its next game when known. */
     static Sports.Game sample(String moment, Sports.MyTeam t, Sports.Game next) {
@@ -180,7 +183,10 @@ final class GameDay {
     // ---------------------------------------------------------------- the photo, from the team's news
 
     interface PhotoCallback {
-        /** big is ESPN's 1296×729 cut of the picture, small the one the article lists (if big doesn't load). */
+        /**
+         * big is ESPN's 1296×729 cut of the picture, small the one the article lists (if big doesn't load); both null
+         * when no article fits.
+         */
         void onPhoto(String big, String small);
     }
 
@@ -195,7 +201,7 @@ final class GameDay {
     /**
      * The newest fitting photo of the team's ESPN news, looked up again every three hours: from the last three weeks,
      * about this team (one or two teams tagged, not a league-wide list), and not about deaths, arrests, injuries or
-     * suspensions. Calls back on the main thread, with nothing when no article fits.
+     * suspensions. Calls back on the main thread, with nulls when no article fits.
      */
     static void photo(String leagueKey, String teamId, PhotoCallback cb) {
         String key = leagueKey + ":" + teamId;
@@ -203,6 +209,7 @@ final class GameDay {
         Long at = PHOTO_AT.get(key);
         if (hit != null && at != null && System.currentTimeMillis() - at < 3 * 3_600_000L) {
             if (hit.length == 2) cb.onPhoto(hit[0], hit[1]);
+            else cb.onPhoto(null, null);
             return;
         }
         Sports.League l = Sports.league(leagueKey);
@@ -211,8 +218,91 @@ final class GameDay {
             String[] found = find(l.paths[0], teamId);
             PHOTO.put(key, found == null ? new String[0] : found);
             PHOTO_AT.put(key, System.currentTimeMillis());
-            if (found != null) MAIN.post(() -> cb.onPhoto(found[0], found[1]));
+            MAIN.post(() -> cb.onPhoto(found == null ? null : found[0], found == null ? null : found[1]));
         }, "gameday-photo").start();
+    }
+
+    // ---------------------------------------------------------------- the poster, when there is no photo
+
+    interface StarCallback {
+        /** The star's cut-out headshot (transparent PNG) and jersey number. */
+        void onStar(String headshot, String jersey);
+    }
+
+    private static final Map<String, String[]> STAR = new ConcurrentHashMap<>();
+    private static final Map<String, Long> STAR_AT = new ConcurrentHashMap<>();
+
+    /**
+     * The team's star, for the poster when the news have no photo: in the NFL the starting quarterback (ESPN's depth
+     * chart), in soccer the number 10, else a forward, among the players ESPN has a headshot of. Other leagues have
+     * none. Looked up again every 12 hours; calls back on the main thread only when there is one.
+     */
+    static void star(String leagueKey, String teamId, StarCallback cb) {
+        String key = leagueKey + ":" + teamId;
+        String[] hit = STAR.get(key);
+        Long at = STAR_AT.get(key);
+        if (hit != null && at != null && System.currentTimeMillis() - at < 12 * 3_600_000L) {
+            if (hit.length == 2) cb.onStar(hit[0], hit[1]);
+            return;
+        }
+        Sports.League l = Sports.league(leagueKey);
+        if (l == null || teamId.isEmpty()) return;
+        new Thread(() -> {
+            String[] found = findStar(l, teamId);
+            STAR.put(key, found == null ? new String[0] : found);
+            STAR_AT.put(key, System.currentTimeMillis());
+            if (found != null) MAIN.post(() -> cb.onStar(found[0], found[1]));
+        }, "gameday-star").start();
+    }
+
+    private static String[] findStar(Sports.League l, String teamId) {
+        String base = "https://site.api.espn.com/apis/site/v2/sports/" + l.paths[0] + "/teams/" + teamId;
+        try {
+            // Everyone on the team: the NFL groups them (offense, defense…), soccer lists them.
+            JSONArray roster = Sports.get(base + "/roster").optJSONArray("athletes");
+            java.util.List<JSONObject> players = new java.util.ArrayList<>();
+            for (int i = 0; roster != null && i < roster.length(); i++) {
+                JSONObject a = roster.getJSONObject(i);
+                JSONArray items = a.optJSONArray("items");
+                if (items == null) players.add(a);
+                else for (int k = 0; k < items.length(); k++) players.add(items.getJSONObject(k));
+            }
+            JSONObject pick = null;
+            if ("nfl".equals(l.key)) {
+                String qb = "";
+                JSONArray charts = Sports.get(base + "/depthcharts").optJSONArray("depthchart");
+                for (int i = 0; charts != null && i < charts.length() && qb.isEmpty(); i++) {
+                    JSONObject pos = charts.getJSONObject(i).optJSONObject("positions");
+                    JSONObject q = pos == null ? null : pos.optJSONObject("qb");
+                    JSONArray who = q == null ? null : q.optJSONArray("athletes");
+                    if (who != null && who.length() > 0) qb = who.getJSONObject(0).optString("id");
+                }
+                for (JSONObject p : players) if (p.optString("id").equals(qb)) pick = p;
+            } else if ("soccer".equals(l.sport)) {
+                for (int pass = 0; pass < 3 && pick == null; pass++) {
+                    for (JSONObject p : players) {
+                        if (headshot(p).isEmpty()) continue;
+                        JSONObject pos = p.optJSONObject("position");
+                        String abbr = pos == null ? "" : pos.optString("abbreviation");
+                        if (pass == 0 && "10".equals(p.optString("jersey"))
+                                || pass == 1 && (abbr.equals("F") || abbr.equals("FW"))
+                                || pass == 2) {
+                            pick = p;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (pick == null || headshot(pick).isEmpty()) return null;
+            return new String[]{headshot(pick), pick.optString("jersey")};
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String headshot(JSONObject player) {
+        JSONObject h = player.optJSONObject("headshot");
+        return h == null ? "" : h.optString("href");
     }
 
     private static String[] find(String path, String teamId) {
@@ -263,6 +353,12 @@ final class GameDay {
         private int color = 0xFF5E6874;
         private float strength = 1f, photoAlpha = 1f;
         private Bitmap photo;
+        /** Without a photo: the star's headshot in the team's colours, its number outlined behind (alt colour). */
+        private Bitmap poster;
+        private String number = "";
+        private int alt = 0xFFFFFFFF;
+        private Typeface face;
+        private ColorMatrixColorFilter duotone;
         /** Where it fades out: the top of the app row. */
         private int edge;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -281,6 +377,7 @@ final class GameDay {
 
         void set(int color, float strength, float photoAlpha) {
             if (color == this.color && strength == this.strength && photoAlpha == this.photoAlpha) return;
+            if (color != this.color) duotone = null;
             this.color = color;
             this.strength = strength;
             this.photoAlpha = photoAlpha;
@@ -288,9 +385,35 @@ final class GameDay {
         }
 
         void setPhoto(Bitmap b) {
-            if (b == photo) return;
+            if (b == photo && poster == null) return;
             photo = b;
+            poster = null;
             invalidate();
+        }
+
+        void setPoster(Bitmap b, String number, int alt, Typeface face) {
+            if (b == poster && photo == null) return;
+            photo = null;
+            poster = b;
+            this.number = number == null ? "" : number;
+            this.alt = alt;
+            this.face = face;
+            invalidate();
+        }
+
+        /** Gray turned into the team's colour: shadows deep, light almost white. */
+        private ColorMatrixColorFilter duotone() {
+            float[] dark = new float[3], span = new float[3];
+            int[] c = {(color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF};
+            for (int i = 0; i < 3; i++) {
+                dark[i] = c[i] * 0.27f;
+                span[i] = (c[i] + (255 - c[i]) * 0.82f - dark[i]) / 255f;
+            }
+            return new ColorMatrixColorFilter(new float[]{
+                    0.299f * span[0], 0.587f * span[0], 0.114f * span[0], 0, dark[0],
+                    0.299f * span[1], 0.587f * span[1], 0.114f * span[1], 0, dark[1],
+                    0.299f * span[2], 0.587f * span[2], 0.114f * span[2], 0, dark[2],
+                    0, 0, 0, 1, 0});
         }
 
         void setEdge(int y) {
@@ -354,9 +477,47 @@ final class GameDay {
                 paint.setShader(new LinearGradient(x0, 0, x0 + 700 * k, 0, new int[]{tint(0), tint(110 * photoAlpha), tint(0)},
                         new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
                 c.drawRect(x0, 0, x0 + 700 * k, b, paint);
+            } else if (poster != null && photoAlpha > 0) {
+                drawPoster(c, w, h, b);
             }
             paint.setShader(null);
             mask.setShader(null);
+        }
+
+        /** The mock-up's poster: a glow, the number outlined, the player standing on the app row. */
+        private void drawPoster(Canvas c, int w, int h, float b) {
+            float s = h / 1080f, ph = 460 * s, pw = poster.getWidth() * ph / poster.getHeight();
+            float cx = w * 0.672f, left = cx - pw / 2;
+            int glow = ((int) (80 * photoAlpha) << 24) | (alt & 0x00FFFFFF);
+            paint.setShader(new RadialGradient(cx, b - 200 * s, 380 * s, glow, glow & 0x00FFFFFF, Shader.TileMode.CLAMP));
+            c.drawCircle(cx, b - 200 * s, 380 * s, paint);
+            paint.setShader(null);
+            if (!number.isEmpty()) {
+                Paint num = new Paint(Paint.ANTI_ALIAS_FLAG);
+                num.setStyle(Paint.Style.STROKE);
+                num.setStrokeWidth(5 * s);
+                num.setTextSize(520 * s);
+                num.setTextAlign(Paint.Align.CENTER);
+                if (face != null) num.setTypeface(face);
+                num.setFontVariationSettings("'wght' 700");
+                num.setColor(((int) (140 * photoAlpha) << 24) | (alt & 0x00FFFFFF));
+                Paint.FontMetrics fm = num.getFontMetrics();
+                c.drawText(number, cx, b - 300 * s - (fm.ascent + fm.descent) / 2, num);
+            }
+            if (duotone == null) duotone = duotone();
+            int layer = c.saveLayer(left, b - ph, left + pw, b, null);
+            RectF at = new RectF(left, b - ph, left + pw, b);
+            paint.setAlpha((int) (255 * photoAlpha));
+            c.drawBitmap(poster, null, at, paint);
+            paint.setColorFilter(duotone);
+            paint.setAlpha((int) (184 * photoAlpha));
+            c.drawBitmap(poster, null, at, paint);
+            paint.setColorFilter(null);
+            paint.setAlpha(255);
+            mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+            mask.setShader(new LinearGradient(0, b - 180 * s, 0, b, 0xFF000000, 0, Shader.TileMode.CLAMP));
+            c.drawRect(at, mask);
+            c.restoreToCount(layer);
         }
     }
 

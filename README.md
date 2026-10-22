@@ -8,7 +8,7 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
 | De noche | Día de partido de tu equipo |
 |---|---|
-| ![Inicio de noche con el cielo nocturno](docs/screenshots/inicio-noche.jpg) | ![Inicio el día que juega Santos: logo, rival, hora y cuenta regresiva](docs/screenshots/dia-de-partido.jpg) |
+| ![Inicio de noche con el cielo nocturno](docs/screenshots/inicio-noche.jpg) | ![Día de partido de Santos: el inicio en sus colores, con rival, hora y la cuenta regresiva en grande](docs/screenshots/dia-de-partido.jpg) |
 
 | Panel del partido, en vivo | En vivo (Pluto TV y ViX) |
 |---|---|
@@ -63,8 +63,9 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
   más pronto; los demás días dice cuál es tu próximo partido. En la fila Hoy, cada equipo tuyo que no juega
   trae su botón con su último partido y su tabla.
 - **Día de partido:** el inicio se pinta con los colores de tu equipo y, a la derecha, pone una foto reciente de
-  sus noticias en ESPN (cambia sola, sin notas tristes). En la mañana va suave; desde 3 horas antes, la cuenta
-  regresiva en grande; durante el juego, el marcador grande; si gana, "¡Ganaron!" con confeti hasta la mañana
+  sus noticias en ESPN (cambia sola, sin notas tristes); si no hay ninguna, un póster de su figura (el QB titular
+  en la NFL, el 10 en futbol) en los colores del equipo, con su número detrás. En la mañana va suave; desde 3 horas antes, la cuenta
+  regresiva en grande; durante el juego, el marcador grande (se actualiza cada 30 s); si gana, "¡Ganaron!" con confeti hasta la mañana
   siguiente. Si pierde, el inicio vuelve a la normalidad. OK sobre el marcador abre el panel del partido. La foto
   se apaga en Ajustes > Deportes.
 - **Panel del partido:** OK sobre un partido de "Hoy" abre marcador por periodo, líderes, comparativa de
@@ -177,7 +178,8 @@ clima), **Deportes** (ligas y tu equipo) y **En vivo**, si los quieres.
   (61 lluvia, 95 tormenta, 45 neblina, 71 nieve, 2 nubes, -1 el clima real).
 - **Ver un aviso de partido de ejemplo:**
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SPORTS_TEST`
-- **Ver el día de partido con tu equipo** (`morning`, `soon`, `live`, `won`; `off` vuelve al real):
+- **Ver el día de partido con tu equipo** (`morning`, `soon`, `live`, `won`; `off` vuelve al real; `--ez photo
+  false` solo colores, `--ez poster true` el póster en vez de la foto):
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.GAMEDAY_PREVIEW --es moment live`
 - **Ver un recordatorio de ejemplo** (sale en unos segundos):
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST`

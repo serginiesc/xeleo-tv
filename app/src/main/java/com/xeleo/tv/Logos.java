@@ -115,6 +115,21 @@ final class Logos {
         });
     }
 
+    /** A cut-out picture with its transparency (game day's poster), full size, kept with the logos. */
+    static void cutout(String url, BitmapCallback cb) {
+        Bitmap hit = CACHE.get(url);
+        if (hit != null) {
+            cb.onBitmap(hit);
+            return;
+        }
+        POOL.execute(() -> {
+            Bitmap b = fetch(url);
+            if (b == null) return;
+            CACHE.put(url, b);
+            MAIN.post(() -> cb.onBitmap(b));
+        });
+    }
+
     /** Downloads a picture into the cache ahead of time (En vivo's first preview), unless it is there. */
     static void warm(String url) {
         if (url.isEmpty() || PHOTOS.get(url) != null) return;

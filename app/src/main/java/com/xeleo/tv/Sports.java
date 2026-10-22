@@ -32,7 +32,7 @@ import java.util.TimeZone;
 /**
  * Sports mode: today's games of the leagues you follow and your team's next game, from ESPN's public scoreboard
  * (site.api.espn.com, no key; not an official, documented API, so it may change). Fetched in the background and
- * cached: every minute while a game is on, every 15 minutes otherwise. Settings live here too (Quick settings >
+ * cached: every 30 seconds while a game is on, every 15 minutes otherwise. Settings live here too (Quick settings >
  * Deportes).
  */
 final class Sports {
@@ -367,7 +367,7 @@ final class Sports {
         synchronized (CACHE) {
             List<Game> cached = CACHE.get(l.key);
             Long at = FETCHED.get(l.key);
-            if (cached != null && at != null && now - at < (anyLive(cached) ? 55_000 : 15 * 60_000)) return cached;
+            if (cached != null && at != null && now - at < (anyLive(cached) ? 25_000 : 15 * 60_000)) return cached;
         }
         List<Game> games = new ArrayList<>();
         String date = new SimpleDateFormat("yyyyMMdd", Locale.ROOT).format(new Date());

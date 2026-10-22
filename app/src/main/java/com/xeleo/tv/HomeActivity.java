@@ -92,7 +92,7 @@ public class HomeActivity extends Activity {
     private GameDay.Backdrop backdrop;
     private GameDay.Hero hero;
     private GameDay.Moment heroMoment = GameDay.Moment.NONE;
-    private boolean previewCelebrated;
+    private boolean previewCelebrated, liveTicking;
     private ConfettiView confetti;
     /** Your team's game today and its next one (Sports mode). */
     private Sports.Game myGame, nextGame;
@@ -157,6 +157,15 @@ public class HomeActivity extends Activity {
             Weather.update(HomeActivity.this, weather);
             updateScenery(true);
             handler.postDelayed(this, 60_000);
+        }
+    };
+
+    /** While your team plays, the score every 30 seconds instead of with the minute. */
+    private final Runnable liveTick = new Runnable() {
+        @Override
+        public void run() {
+            refreshSports();
+            handler.postDelayed(this, 30_000);
         }
     };
 
@@ -325,6 +334,8 @@ public class HomeActivity extends Activity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(minuteTick);
+        handler.removeCallbacks(liveTick);
+        liveTicking = false;
         ambient.setRunning(false);
         if (moving != null) endMove();
     }
@@ -697,7 +708,7 @@ public class HomeActivity extends Activity {
         String shortName = team == null ? "" : team.shortName.isEmpty() ? team.name : team.shortName;
         String logo = team == null ? "" : team.logo, league = team == null ? "" : team.league;
         String teamId = team == null ? "" : team.id;
-        int color = team == null ? 0xFF5E6874 : team.color;
+        int color = team == null ? 0xFF5E6874 : team.color, alt = team == null ? Color.WHITE : team.alt;
         if (m == GameDay.Moment.WON && preview == null) {
             GameDay.rememberWin(this, game, team);
             // A win gets confetti once per game, the first time Home shows the final.
@@ -718,11 +729,22 @@ public class HomeActivity extends Activity {
                 league = win.league;
                 teamId = win.teamId;
                 color = win.color;
+                alt = win.alt;
             }
         }
         // The preview's win gets its confetti too, once each time it is asked for.
-        if (m == GameDay.Moment.WON && preview != null && !previewCelebrated) confetti.burst(color, team.alt);
+        if (m == GameDay.Moment.WON && preview != null && !previewCelebrated) confetti.burst(color, alt);
         previewCelebrated = m == GameDay.Moment.WON && preview != null;
+        // A real game on: half-minute updates while Home is on screen (onPause stops them).
+        if (m == GameDay.Moment.LIVE && preview == null) {
+            if (!liveTicking) {
+                liveTicking = true;
+                handler.postDelayed(liveTick, 30_000);
+            }
+        } else {
+            liveTicking = false;
+            handler.removeCallbacks(liveTick);
+        }
         heroMoment = m;
         boolean on = m != GameDay.Moment.NONE;
         hero.setVisibility(on ? View.VISIBLE : View.GONE);
@@ -733,7 +755,8 @@ public class HomeActivity extends Activity {
         ringColor = on ? color : Color.WHITE;
         if (!on) return;
         boolean morning = m == GameDay.Moment.MORNING;
-        backdrop.set(color, morning ? 0.45f : 1f, GameDay.photoOn(this) ? (morning ? 0.45f : 1f) : 0f);
+        boolean photo = GameDay.photoOn(this) && !(preview != null && GameDay.previewNoPhoto);
+        backdrop.set(color, morning ? 0.45f : 1f, photo ? (morning ? 0.45f : 1f) : 0f);
         hero.show(m, game, abbr, shortName, logo);
         Sports.Game shown = game;
         String gameLeague = league;
@@ -743,10 +766,20 @@ public class HomeActivity extends Activity {
                         new String[]{gameLeague}, new String[]{shown.broadcast}, 0);
             }
         });
-        if (GameDay.photoOn(this)) {
-            GameDay.photo(league, teamId, (big, small) -> Logos.photo(big, small, b -> {
-                if (heroMoment != GameDay.Moment.NONE) backdrop.setPhoto(b);
-            }));
+        if (photo) {
+            // A recent photo from the team's news; without one, the poster of its star.
+            boolean posterOnly = preview != null && GameDay.previewPoster;
+            String lg = league, id = teamId;
+            int posterAlt = alt;
+            GameDay.photo(league, teamId, (big, small) -> {
+                if (big != null && !posterOnly) {
+                    Logos.photo(big, small, b -> { if (heroMoment != GameDay.Moment.NONE) backdrop.setPhoto(b); });
+                } else {
+                    GameDay.star(lg, id, (url, number) -> Logos.cutout(url, b -> {
+                        if (heroMoment != GameDay.Moment.NONE) backdrop.setPoster(b, number, posterAlt, medium);
+                    }));
+                }
+            });
         } else {
             backdrop.setPhoto(null);
         }
