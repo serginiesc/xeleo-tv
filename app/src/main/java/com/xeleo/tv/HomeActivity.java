@@ -154,6 +154,7 @@ public class HomeActivity extends Activity {
         public void run() {
             updateGreeting();
             refreshSports();
+            settingsDot();
             Weather.update(HomeActivity.this, weather);
             updateScenery(true);
             handler.postDelayed(this, 60_000);
@@ -316,7 +317,8 @@ public class HomeActivity extends Activity {
         else if (tab == TAB_LIVE && liveView != null) liveView.open();
         Live.prefetch(this);   // so En vivo opens with the guide already there
         // A newer XELEO on GitHub: a dot on Ajustes (Acerca de offers it).
-        Updater.check(this, false, () -> settingsPill.setText(Updater.available(this) ? "Ajustes  •" : "Ajustes"));
+        Updater.check(this, false, this::settingsDot);
+        settingsDot();
         lat = Profile.lat(this);
         lon = Profile.lon(this);
         updateScenery(false);
@@ -427,6 +429,12 @@ public class HomeActivity extends Activity {
         time.addView(date);
         bar.addView(time);
         return bar;
+    }
+
+    /** A dot on Ajustes when there is something to see there: a newer XELEO or notifications. */
+    private void settingsDot() {
+        boolean dot = Updater.available(this) || !MediaListener.list(this).isEmpty();
+        settingsPill.setText(dot ? "Ajustes  •" : "Ajustes");
     }
 
     /** A pill of the top bar; tab is TAB_HOME, TAB_APPS or TAB_LIVE for a tab, -1 for an action. */

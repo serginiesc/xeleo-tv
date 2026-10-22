@@ -172,8 +172,39 @@ public class QuickSettingsActivity extends Activity {
         clock.setTextSize(21);
         clock.setTypeface(regular);
         clock.setTextColor(Color.WHITE);
+        clock.setSingleLine(true);
         time.addView(clock);
         h.addView(time, new LinearLayout.LayoutParams(0, -2, 1f));
+
+        // The bell: the TV's notifications (NotificationsActivity), with how many there are.
+        FrameLayout bellBox = new FrameLayout(this);
+        bellBox.setClipChildren(false);
+        ImageView bell = new ImageView(this);
+        bell.setImageResource(R.drawable.ic_bell);
+        bell.setPadding(dp(6), dp(6), dp(6), dp(6));
+        bell.setFocusable(true);
+        bell.setClickable(true);
+        bell.setContentDescription("Notificaciones");
+        styleRound(bell, false);
+        bell.setOnFocusChangeListener((v, f) -> styleRound(v, f));
+        bell.setOnClickListener(v -> open(new Intent(this, NotificationsActivity.class)));
+        bellBox.addView(bell, new FrameLayout.LayoutParams(dp(30), dp(30)));
+        int count = MediaListener.list(this).size();
+        if (count > 0) {
+            TextView badge = text(8, DARK, medium);
+            badge.setText(count > 9 ? "9+" : String.valueOf(count));
+            badge.setGravity(Gravity.CENTER);
+            GradientDrawable dot = new GradientDrawable();
+            dot.setShape(GradientDrawable.OVAL);
+            dot.setColor(0xFF8AB4F8);
+            badge.setBackground(dot);
+            FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(dp(14), dp(14), Gravity.TOP | Gravity.START);
+            blp.leftMargin = dp(20);
+            blp.topMargin = -dp(3);
+            bellBox.addView(badge, blp);
+        }
+        h.setClipChildren(false);
+        h.addView(bellBox, new LinearLayout.LayoutParams(dp(30), dp(30)));
 
         LinearLayout gearCol = new LinearLayout(this);
         gearCol.setOrientation(LinearLayout.VERTICAL);
@@ -185,7 +216,7 @@ public class QuickSettingsActivity extends Activity {
         gear.setClickable(true);
         gear.setContentDescription("Toda la configuración");
         TextView gearLabel = text(8, TEXT_DIM, regular);
-        gearLabel.setText("Toda la configuración");
+        gearLabel.setText("Configuración");
         gearLabel.setSingleLine(true);
         gearLabel.setVisibility(View.INVISIBLE);
         styleRound(gear, false);
@@ -198,7 +229,7 @@ public class QuickSettingsActivity extends Activity {
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(-2, -2);
         llp.topMargin = dp(4);
         gearCol.addView(gearLabel, llp);
-        h.addView(gearCol, new LinearLayout.LayoutParams(dp(78), -2));
+        h.addView(gearCol, new LinearLayout.LayoutParams(dp(62), -2));   // room for the bell and a one-line clock
 
         TextView avatar = text(13, Color.WHITE, medium);
         String owner = Profile.userName(this);

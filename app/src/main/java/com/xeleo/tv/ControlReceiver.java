@@ -56,7 +56,7 @@ public class ControlReceiver extends BroadcastReceiver {
             setResultData("reminder in a few seconds");
         } else if ("com.xeleo.tv.OPEN_NOTIFICATION".equals(action)) {
             String pkg = intent.getStringExtra("pkg");
-            setResultData(pkg != null && MediaListener.open(pkg) ? "opened" : "no notification from " + pkg);
+            setResultData(pkg != null && MediaListener.openApp(context, pkg) ? "opened" : "no notification from " + pkg);
         } else if ("com.xeleo.tv.GAMEDAY_PREVIEW".equals(action)) {
             String m = intent.getStringExtra("moment");
             GameDay.preview = m == null || m.equals("off") ? null : m;

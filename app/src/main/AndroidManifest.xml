@@ -74,6 +74,14 @@
             android:screenOrientation="landscape"
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
 
+        <!-- Quick settings > the bell: the TV's notifications (MediaListener). -->
+        <activity
+            android:name=".NotificationsActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+
         <!-- Quick settings > Deportes: Sports mode, leagues, your team and game alerts. -->
         <activity
             android:name=".SportsSettingsActivity"
