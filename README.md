@@ -10,9 +10,9 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 |---|---|
 | ![Inicio de noche con el cielo nocturno](docs/screenshots/inicio-noche.jpg) | ![Inicio el día que juega Santos: logo, rival, hora y cuenta regresiva](docs/screenshots/dia-de-partido.jpg) |
 
-| Panel del partido | En vivo |
+| Panel del partido, en vivo | En vivo (Pluto TV y ViX) |
 |---|---|
-| ![Panel del partido: marcador por cuarto, líderes, comparativa y tabla de la división](docs/screenshots/panel-partido.jpg) | ![Pestaña En vivo con la guía de Pluto TV y la vista previa del canal](docs/screenshots/en-vivo.jpg) |
+| ![Panel de América vs Atlas en juego: marcador, líderes, comparativa, tabla del Apertura y dónde verlo](docs/screenshots/panel-partido.jpg) | ![Pestaña En vivo en Deportes en vivo, con ViX Deportes y los canales de Pluto](docs/screenshots/en-vivo.jpg) |
 
 | Menú rápido | Todas las apps |
 |---|---|
@@ -22,9 +22,9 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 |---|---|
 | ![Aviso de anotación de los Chiefs encima de otra app](docs/screenshots/aviso.jpg) | ![Menú de un canal: Mis canales, ocultar y recordar el siguiente programa](docs/screenshots/en-vivo-menu.jpg) |
 
-<p align="center">
-  <img src="docs/screenshots/protector.jpg" width="480" alt="Protector de pantalla con reloj, clima y canción">
-</p>
+| Acerca de y actualizaciones | Protector de pantalla |
+|---|---|
+| ![Acerca de: versión, aviso de versión nueva con el botón Actualizar y la licencia MIT](docs/screenshots/acerca-de.jpg) | ![Protector de pantalla de noche con reloj y clima](docs/screenshots/protector.jpg) |
 
 ## Qué trae
 
