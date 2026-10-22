@@ -362,6 +362,21 @@ final class GameDay {
         private Typeface face;
         private ColorMatrixColorFilter duotone;
         private boolean stadium;
+        /** The team's crest for the stadium's facade, and how lit it is: 0 by day, 1 at night. */
+        private Bitmap crest;
+        private float glow;
+
+        void setCrest(Bitmap b) {
+            if (b == crest) return;
+            crest = b;
+            if (stadium) invalidate();
+        }
+
+        void setGlow(float g) {
+            if (g == glow) return;
+            glow = g;
+            if (stadium) invalidate();
+        }
         /** Where it fades out: the top of the app row. */
         private int edge;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -510,13 +525,16 @@ final class GameDay {
             float x1 = w * 0.5f, x2 = w * 0.985f, cx = (x1 + x2) / 2, top = b - 150 * s, crown = b - 280 * s;
             float ctrl = 2 * crown - top;   // the quadratic's control point that puts the arc's peak at crown
             int light = lum(alt) < 110 ? 0xFFFFFFFF : alt | 0xFF000000;
-            int facade = mix(color, 0xFF000000, 0.35f), deep = mix(color, 0xFF000000, 0.7f);
+            // At night the facade goes darker and everything that shines, brighter.
+            int facade = mix(color, 0xFF000000, 0.35f + 0.2f * glow), deep = mix(color, 0xFF000000, 0.7f);
             int rim = mix(color, 0xFFFFFFFF, 0.5f);
             int layer = c.saveLayerAlpha(0, 0, w, b, (int) (255 * photoAlpha));
 
             // The light over the pitch, spilling out of the stadium.
-            paint.setShader(new RadialGradient(cx, top, 560 * s, alpha(light, 130), alpha(light, 0), Shader.TileMode.CLAMP));
-            c.drawRect(x1 - 300 * s, top - 560 * s, w, b, paint);
+            float halo = 560 * s * (1 + 0.3f * glow);
+            paint.setShader(new RadialGradient(cx, top, halo, alpha(light, (int) (130 + 110 * glow)), alpha(light, 0),
+                    Shader.TileMode.CLAMP));
+            c.drawRect(x1 - 300 * s, top - halo, w, b, paint);
 
             // Floodlights: a pole on the arc, a lamp, and a soft beam up and outwards.
             float[] at = {0.14f, 0.36f, 0.64f, 0.86f};
@@ -532,7 +550,7 @@ final class GameDay {
                 beam.lineTo(bx + (float) (Math.sin(tilt + spread) * len), hy - (float) (Math.cos(tilt + spread) * len));
                 beam.close();
                 paint.setShader(new LinearGradient(bx, hy, bx + (float) (Math.sin(tilt) * len), hy - (float) (Math.cos(tilt) * len),
-                        alpha(light, 80), alpha(light, 0), Shader.TileMode.CLAMP));
+                        alpha(light, (int) (80 + 90 * glow)), alpha(light, 0), Shader.TileMode.CLAMP));
                 c.drawPath(beam, paint);
                 paint.setShader(null);
                 line.setStrokeWidth(4 * s);
@@ -562,7 +580,7 @@ final class GameDay {
                 c.drawLine(x, y + 16 * s, x, b, line);
                 if (rnd.nextFloat() < 0.75f && u + step < 1) {
                     float wx = x + 5 * s, ww = (x2 - x1) * step - 10 * s;
-                    paint.setColor(alpha(light, 60 + rnd.nextInt(110)));
+                    paint.setColor(alpha(light, (int) ((60 + rnd.nextInt(110)) * (1 + 0.6f * glow))));
                     c.drawRect(wx, b - 84 * s, wx + ww, b - 66 * s, paint);
                 }
             }
@@ -570,12 +588,29 @@ final class GameDay {
             roof.moveTo(x1, top);
             roof.quadTo(cx, ctrl, x2, top);
             line.setStrokeWidth(12 * s);
-            line.setColor(rim);
+            line.setColor(glow > 0 ? mix(rim, light, 0.5f * glow) : rim);
+            if (glow > 0) line.setShadowLayer(22 * s * glow, 0, 0, alpha(light, 220));   // the roof lit at night
             c.drawPath(roof, line);
+            line.clearShadowLayer();
             roof.offset(0, 30 * s);
             line.setStrokeWidth(4 * s);
             line.setColor(alpha(rim, 110));
             c.drawPath(roof, line);
+
+            // The crest in the middle of the facade, on a disc that hides the ribs.
+            if (crest != null) {
+                float r = 62 * s, ccy = b - 165 * s;
+                paint.setColor(deep);
+                c.drawCircle(cx, ccy, r + 10 * s, paint);
+                line.setStrokeWidth(4 * s);
+                line.setColor(rim);
+                if (glow > 0) line.setShadowLayer(16 * s * glow, 0, 0, alpha(light, 200));
+                c.drawCircle(cx, ccy, r + 10 * s, line);
+                line.clearShadowLayer();
+                float k = Math.min(2 * r / crest.getWidth(), 2 * r / crest.getHeight());
+                float cw = crest.getWidth() * k, ch = crest.getHeight() * k;
+                c.drawBitmap(crest, null, new RectF(cx - cw / 2, ccy - ch / 2, cx + cw / 2, ccy + ch / 2), paint);
+            }
 
             // Sparks over the stadium.
             for (int i = 0; i < 16; i++) {

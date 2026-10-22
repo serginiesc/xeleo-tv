@@ -624,6 +624,8 @@ public class HomeActivity extends Activity {
         Scenery.Phase phase = pinnedPhase != null ? pinnedPhase : Scenery.phaseNow(lat, lon);
         Scenery.Kind kind = Weather.kind();
         precip.setKind(kind);
+        // Game day's drawn stadium lights up with the evening.
+        backdrop.setGlow(phase == Scenery.Phase.NIGHT ? 1f : phase == Scenery.Phase.SUNSET ? 0.6f : 0f);
         ambient.setScene(phase, kind);
         if (moving == null) {
             phaseLabel.setText("Fondo " + (pinnedPhase == null ? "automático" : "fijo") + "  ·  " + Scenery.label(phase)
@@ -772,8 +774,9 @@ public class HomeActivity extends Activity {
         if (photo) {
             // A recent photo from the team's news; without one, the poster of its star.
             boolean posterOnly = preview != null && GameDay.previewPoster;
-            String lg = league, id = teamId;
+            String lg = league, id = teamId, crestUrl = Sports.smallLogo(logo, 256);
             int posterAlt = alt;
+            if (!crestUrl.isEmpty()) Logos.cutout(crestUrl, backdrop::setCrest);   // for the drawn stadium
             GameDay.photo(league, teamId, (big, small) -> {
                 if (big != null && !posterOnly) {
                     Logos.photo(big, small, b -> { if (heroMoment != GameDay.Moment.NONE) backdrop.setPhoto(b); });
