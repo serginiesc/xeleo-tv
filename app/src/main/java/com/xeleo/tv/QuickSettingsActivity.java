@@ -188,7 +188,8 @@ public class QuickSettingsActivity extends Activity {
         styleRound(bell, false);
         bell.setOnFocusChangeListener((v, f) -> styleRound(v, f));
         bell.setOnClickListener(v -> open(new Intent(this, NotificationsActivity.class).putExtra("instant", true)));
-        bellBox.addView(bell, new FrameLayout.LayoutParams(dp(30), dp(30)));
+        // A box a bit larger than the bell, so the badge on its corner isn't cut off.
+        bellBox.addView(bell, new FrameLayout.LayoutParams(dp(30), dp(30), Gravity.TOP | Gravity.START));
         int count = MediaListener.list(this).size();
         if (count > 0) {
             TextView badge = text(8, DARK, medium);
@@ -198,13 +199,9 @@ public class QuickSettingsActivity extends Activity {
             dot.setShape(GradientDrawable.OVAL);
             dot.setColor(0xFF8AB4F8);
             badge.setBackground(dot);
-            FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(dp(14), dp(14), Gravity.TOP | Gravity.START);
-            blp.leftMargin = dp(20);
-            blp.topMargin = -dp(3);
-            bellBox.addView(badge, blp);
+            bellBox.addView(badge, new FrameLayout.LayoutParams(dp(14), dp(14), Gravity.TOP | Gravity.END));
         }
-        h.setClipChildren(false);
-        h.addView(bellBox, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        h.addView(bellBox, new LinearLayout.LayoutParams(dp(35), dp(30)));
 
         LinearLayout gearCol = new LinearLayout(this);
         gearCol.setOrientation(LinearLayout.VERTICAL);
