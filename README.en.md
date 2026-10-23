@@ -3,8 +3,8 @@
 [Español](README.md) · **English**
 
 A home screen for the **onn 4K Streaming Box** (Google TV), with no ads and no recommendations: everything on it
-is something you installed. Built and tested on an onn 4K running Google TV 14; it should work on other Google TV
-or Android TV devices, but it hasn't been tested on them.
+is something you installed. Built on an onn 4K and also tested on a Chromecast with Google TV (HD), both on
+Android 14; it should work on other Google TV or Android TV devices, but it hasn't been tested on them.
 
 The app itself is in Spanish; screen names below are given as they appear on the TV, with their meaning.
 
@@ -127,65 +127,83 @@ The app itself is in Spanish; screen names below are given as they appear on the
 
 ## Install
 
-What you can do **without a computer**: install the APK (with the Downloader app or a USB stick), turn on its
-services in the TV's settings (Accessibility → XELEO TV, Special app access → Notification access, System →
-Screensaver) and update it from Acerca de. What **needs a computer, once**: making XELEO the screen the Home
-button opens. Google TV has no setting to change the launcher, so that takes adb.
+It works on the **onn 4K** and on the **Chromecast with Google TV** (tested on the HD, Android 14). What you can
+do **without a computer**: install the APK (with the Downloader app or a USB stick), turn on its services in the
+TV's settings (Accessibility → XELEO TV, Special app access → Notification access, System → Screensaver) and
+update it from Acerca de. What **needs a computer, once**: making XELEO the screen the Home button opens. Google
+TV has no setting to change the launcher, so that takes adb.
 
-First, on the TV: Settings → System → About → press *Android TV OS build* 7 times; then Developer options → turn
-on **USB debugging**. Find the TV's IP in Settings → Network & Internet → your network.
+### 1. Turn on debugging on the TV
 
-### With a ready-made APK
+Settings → System → About → press *Android TV OS build* 7 times. Then, in Developer options:
 
-Download `XELEO-TV.apk` from [Releases](https://github.com/serginiesc/xeleo-tv/releases/latest) (GitHub builds it
-on every change) or use the one you were given. Then, with
-[adb](https://developer.android.com/tools/releases/platform-tools) (replace the IP with your TV's; the TV asks
-"Allow USB debugging?": accept). It's installed with `pm install` because on Android 14 `adb install` keeps
-waiting for an on-screen confirmation; in Git Bash on Windows, run `export MSYS_NO_PATHCONV=1` first.
+- **onn:** turn on **USB debugging**. The TV's IP is all you need (Settings → Network & Internet → your network).
+- **Chromecast:** USB debugging alone doesn't open the network connection; use **Wireless debugging**. That screen
+  shows the IP:port to connect to, and *Pair device with pairing code* shows another IP:port and a 6-digit code
+  to pair the computer (once). The port changes every time it is turned back on.
+
+### 2. Install it with install.sh
+
+On the computer (Git Bash on Windows), with Android's
+[platform-tools](https://developer.android.com/tools/releases/platform-tools). With `--apk` it uses the APK from
+[Releases](https://github.com/serginiesc/xeleo-tv/releases/latest), building nothing; without `--apk` it builds
+one (that needs JDK 17 and the SDK).
 
 ```bash
-adb connect 192.168.1.50:5555
+./install.sh 192.168.1.50 --apk XELEO-TV.apk --replace-google-home
+```
+
+For the Chromecast, the first time add the pairing (the IP:port and code on the pairing screen; the TV itself is
+the IP:port on the Wireless debugging screen):
+
+```bash
+./install.sh 192.168.1.60:37253 --pair 192.168.1.60:46101 189303 --apk XELEO-TV.apk --replace-google-home
+```
+
+The script installs XELEO and sets it as the home screen, screensaver and remote service, with notification
+access. `--replace-google-home` also turns off Google TV's home screen and its setup assistant, **both in one
+step**: with only the home screen off, the assistant takes the Home button (a black screen), and on the
+Chromecast Wireless debugging drops before the rest is done. `./install.sh <tv> --restore-google-home` turns
+them back on.
+
+Before installing it saves your settings to `respaldo-tv-<IP>.json` and, if it had to install from scratch (for
+example, if the previous version was signed with another key), puts them back by itself. It also works with the
+emulator: `./install.sh emulator-5554`. The builds it makes are signed with the XELEO TV key if
+`keystore.properties` exists (it isn't in the repo); otherwise, with your computer's debug key.
+
+### By hand, without the script
+
+With adb connected to the TV (`adb connect IP:port`; in Git Bash on Windows, run `export MSYS_NO_PATHCONV=1`
+first). It's installed with `pm install` because on Android 14 `adb install` keeps waiting for an on-screen
+confirmation.
+
+```bash
 adb push XELEO-TV.apk /data/local/tmp/xeleo.apk
 adb shell pm install -r /data/local/tmp/xeleo.apk
-adb shell cmd package set-home-activity --user 0 com.xeleo.tv/.HomeActivity
 adb shell settings put secure enabled_accessibility_services com.xeleo.tv/.XeleoService
 adb shell settings put secure accessibility_enabled 1
 adb shell cmd notification allow_listener com.xeleo.tv/com.xeleo.tv.MediaListener
 adb shell settings put secure screensaver_components com.xeleo.tv/com.xeleo.tv.SceneryDream
 adb shell pm grant com.xeleo.tv android.permission.ACCESS_FINE_LOCATION
+adb shell "pm disable-user --user 0 com.google.android.apps.tv.launcherx; pm disable-user --user 0 com.google.android.tungsten.setupwraith; cmd role add-role-holder android.app.role.HOME com.xeleo.tv"
 ```
 
-### Building it yourself
+Keep the last line whole, in quotes: that way it runs entirely on the TV even if the connection drops halfway.
+`pm enable` with the same names brings them back.
 
-On the computer (Git Bash on Windows), with JDK 17 and the Android SDK:
+### If something goes wrong
 
-```bash
-./install.sh 192.168.1.50
-```
+- **A black screen when you press Home:** Google's home screen got turned off but not its assistant. Get back
+  into the TV (press the Assistant button and say "Open settings", or unplug it for 10 seconds) and run again with
+  `--replace-google-home`, or put everything back with `--restore-google-home`.
+- **The Chromecast stops answering adb:** Wireless debugging turned off or changed port; turn it back on and use
+  the new IP:port (the pairing already done still works).
 
-The script builds, installs and sets XELEO TV as the home screen, screensaver and remote service. Before
-installing it saves your settings to `respaldo-tv-<tv>.json` and, if it had to install from scratch (for example,
-if the previous version was signed with another key), puts them back by itself. It also works with the emulator:
-`./install.sh emulator-5554`.
+### When you're done
 
-Builds are signed with the XELEO TV key if `keystore.properties` exists (it isn't in the repo); otherwise, with
-your computer's debug key.
-
-### Either way
-
-On Google TV you should also turn off Google's home screen, or it keeps the Home button:
-
-```bash
-adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
-adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
-```
-
-(`pm enable` with the same names brings them back.) Before turning off `setupwraith`, check that your Wi‑Fi
-network isn't one of its own (`adb shell dumpsys wifi | grep -o 'cname=[^ ]*'`): if it is, forget the network
-and connect again.
-
-When you're done, turn USB debugging off again. Then, in the quick menu: **Personalizar** (name and weather
-city), **Deportes** (leagues and your teams) and **En vivo**, if you want them.
+Turn debugging off again. Then, in the quick menu: **Personalizar** (name and weather city), **Deportes**
+(leagues and your teams) and **En vivo**, if you want them. The onn's remote has a settings button, which opens
+XELEO's menu; the Chromecast's doesn't, so there the menu opens with Home → Ajustes.
 
 ## Changing things
 

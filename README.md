@@ -3,8 +3,8 @@
 **Español** · [English](README.en.md)
 
 Pantalla de inicio para el **onn 4K Streaming Box** (Google TV), sin anuncios ni recomendaciones: todo lo que
-aparece es lo que tú instalaste. Hecha y probada en un onn 4K con Google TV 14; debería funcionar en otros
-aparatos con Google TV o Android TV, pero no se ha probado en ellos.
+aparece es lo que tú instalaste. Hecha en un onn 4K y probada también en un Chromecast con Google TV (HD), los
+dos con Android 14; debería funcionar en otros aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
 ![Inicio de día con la fila Hoy de partidos y las apps](docs/screenshots/inicio-dia.jpg)
 
@@ -124,64 +124,82 @@ aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
 ## Instalar
 
-Lo que se puede **sin computadora**: instalar el APK (con la app Downloader o una memoria USB), encender sus
-servicios en los ajustes de la tele (Accesibilidad → XELEO TV, Acceso especial de apps → Acceso a notificaciones,
-Sistema → Protector de pantalla) y actualizarlo desde Acerca de. Lo que **necesita computadora, una sola vez**:
-que XELEO sea lo que abre el botón Inicio. Google TV no tiene opción para cambiar el inicio, así que hace falta adb.
+Funciona en el **onn 4K** y en el **Chromecast con Google TV** (probado en el HD, Android 14). Lo que se puede
+**sin computadora**: instalar el APK (con la app Downloader o una memoria USB), encender sus servicios en los
+ajustes de la tele (Accesibilidad → XELEO TV, Acceso especial de apps → Acceso a notificaciones, Sistema →
+Protector de pantalla) y actualizarlo desde Acerca de. Lo que **necesita computadora, una sola vez**: que XELEO
+sea lo que abre el botón Inicio. Google TV no tiene opción para cambiar el inicio, así que hace falta adb.
 
-Primero, en la tele: Ajustes → Sistema → Acerca de → presiona 7 veces *Compilación del SO*; luego Opciones de
-desarrollador → **Depuración USB** activada. Busca la IP de la tele en Ajustes → Red e Internet → tu red.
+### 1. Prende la depuración en la tele
 
-### Con un APK ya hecho
+Ajustes → Sistema → Acerca de → presiona 7 veces *Compilación del SO*. Luego, en Opciones de desarrollador:
 
-Descarga `XELEO-TV.apk` de [Releases](https://github.com/serginiesc/xeleo-tv/releases/latest) (GitHub lo compila
-solo con cada cambio) o usa el que te pasaron. Luego, con [adb](https://developer.android.com/tools/releases/platform-tools)
-(cambia la IP por la de tu tele; la tele pregunta "¿Permitir depuración USB?": acepta). Se instala con
-`pm install` porque en Android 14 `adb install` se queda esperando una confirmación en pantalla; en Git Bash de
-Windows, corre antes `export MSYS_NO_PATHCONV=1`.
+- **onn:** **Depuración USB** activada. Basta la IP de la tele (Ajustes → Red e Internet → tu red).
+- **Chromecast:** la Depuración USB sola no abre la conexión por red; usa **Depuración inalámbrica**. Ahí mismo
+  verás la IP:puerto para conectar, y en *Vincular dispositivo con código de vinculación* otra IP:puerto y un código
+  de 6 números para vincular la computadora (una sola vez). El puerto cambia cada vez que se vuelve a prender.
+
+### 2. Instálalo con install.sh
+
+En la computadora (Git Bash en Windows), con las
+[platform-tools](https://developer.android.com/tools/releases/platform-tools) de Android. Con `--apk` usa el APK
+de [Releases](https://github.com/serginiesc/xeleo-tv/releases/latest), sin compilar nada; sin `--apk` lo compila
+(necesita JDK 17 y el SDK).
 
 ```bash
-adb connect 192.168.1.50:5555
+./install.sh 192.168.1.50 --apk XELEO-TV.apk --replace-google-home
+```
+
+Para el Chromecast, la primera vez agrega el vínculo (la IP:puerto y el código de la pantalla de vincular; la
+tele es la IP:puerto de la pantalla de Depuración inalámbrica):
+
+```bash
+./install.sh 192.168.1.60:37253 --pair 192.168.1.60:46101 189303 --apk XELEO-TV.apk --replace-google-home
+```
+
+El script instala XELEO y lo deja como inicio, protector de pantalla y servicio del control, con acceso a
+notificaciones. `--replace-google-home` apaga además el inicio de Google TV y su asistente de configuración, **los
+dos en un solo paso**: si solo se apaga el inicio, el asistente se queda con el botón Inicio (pantalla negra) y en
+el Chromecast la Depuración inalámbrica se cae antes de terminar. `./install.sh <tele> --restore-google-home` los
+regresa.
+
+Antes de instalar guarda tus ajustes en `respaldo-tv-<IP>.json` y, si tuvo que instalar desde cero (por ejemplo,
+si la versión anterior estaba firmada con otra llave), los regresa solo. También sirve con el emulador:
+`./install.sh emulator-5554`. Las versiones que compila van firmadas con la llave de XELEO TV si existe
+`keystore.properties` (no está en el repo); si no, con la llave de depuración de tu computadora.
+
+### A mano, sin el script
+
+Con adb conectado a la tele (`adb connect IP:puerto`; en Git Bash de Windows, antes `export MSYS_NO_PATHCONV=1`).
+Se instala con `pm install` porque en Android 14 `adb install` se queda esperando una confirmación en pantalla.
+
+```bash
 adb push XELEO-TV.apk /data/local/tmp/xeleo.apk
 adb shell pm install -r /data/local/tmp/xeleo.apk
-adb shell cmd package set-home-activity --user 0 com.xeleo.tv/.HomeActivity
 adb shell settings put secure enabled_accessibility_services com.xeleo.tv/.XeleoService
 adb shell settings put secure accessibility_enabled 1
 adb shell cmd notification allow_listener com.xeleo.tv/com.xeleo.tv.MediaListener
 adb shell settings put secure screensaver_components com.xeleo.tv/com.xeleo.tv.SceneryDream
 adb shell pm grant com.xeleo.tv android.permission.ACCESS_FINE_LOCATION
+adb shell "pm disable-user --user 0 com.google.android.apps.tv.launcherx; pm disable-user --user 0 com.google.android.tungsten.setupwraith; cmd role add-role-holder android.app.role.HOME com.xeleo.tv"
 ```
 
-### Compilándolo tú
+La última línea va completa, entre comillas: así corre entera en la tele aunque la conexión se caiga a la mitad.
+`pm enable` con los mismos nombres los regresa.
 
-En la computadora (Git Bash en Windows), con JDK 17 y el SDK de Android:
+### Si algo sale mal
 
-```bash
-./install.sh 192.168.1.50
-```
+- **Pantalla negra al picar Inicio:** se apagó el inicio de Google pero no su asistente. Vuelve a entrar a la
+  tele (botón del Asistente y di "Abre configuración", o desconéctala 10 segundos) y corre otra vez con
+  `--replace-google-home`, o regrésalo todo con `--restore-google-home`.
+- **El Chromecast deja de responder a adb:** la Depuración inalámbrica se apagó o cambió de puerto; vuelve a
+  prenderla y usa la IP:puerto nueva (el vínculo ya hecho sigue sirviendo).
 
-El script compila, instala y deja XELEO TV como inicio, protector de pantalla y servicio del control. Antes de
-instalar guarda tus ajustes en `respaldo-tv-<tele>.json` y, si tuvo que instalar desde cero (por ejemplo, si la versión
-anterior estaba firmada con otra llave), los regresa solo. También sirve con el emulador:
-`./install.sh emulator-5554`.
+### Al terminar
 
-Las versiones van firmadas con la llave de XELEO TV si existe `keystore.properties` (no está en el repo); si no,
-con la llave de depuración de tu computadora.
-
-### En los dos casos
-
-En Google TV conviene desactivar también el inicio de Google, o se queda con el botón Inicio:
-
-```bash
-adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
-adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith
-```
-
-(`pm enable` con los mismos nombres los regresa.) Antes de desactivar `setupwraith`, revisa que tu red Wi‑Fi no
-sea suya (`adb shell dumpsys wifi | grep -o 'cname=[^ ]*'`): si lo es, olvida la red y vuelve a conectarte.
-
-Al terminar, apaga otra vez la Depuración USB. Luego, en el menú rápido: **Personalizar** (nombre y ciudad del
-clima), **Deportes** (ligas y tu equipo) y **En vivo**, si los quieres.
+Apaga la depuración otra vez. Luego, en el menú rápido: **Personalizar** (nombre y ciudad del clima),
+**Deportes** (ligas y tus equipos) y **En vivo**, si los quieres. El control del onn tiene botón de ajustes, que
+abre el menú de XELEO; el del Chromecast no, así que ahí el menú se abre con Inicio → Ajustes.
 
 ## Cambiar cosas
 
