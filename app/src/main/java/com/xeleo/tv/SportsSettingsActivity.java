@@ -108,14 +108,24 @@ public class SportsSettingsActivity extends Activity {
         cups.setPadding(dp(2), dp(2), 0, dp(6));
         card.addView(cups);
 
-        // Your teams, one per league: Home follows the one that plays soonest.
+        // Your teams, one per league: Home follows the one that plays soonest. Only the leagues switched on above get
+        // a row (and any that already has a team, so it can be taken off), so the list doesn't grow to twelve.
         label("Tus equipos (uno por liga)");
+        boolean any = false;
         for (String group : Sports.GROUPS) {
             for (Sports.League l : Sports.LEAGUES) {
                 if (!l.group.equals(group) || l.key.equals("champions")) continue;   // its teams are in their leagues
                 Sports.MyTeam t = Sports.myTeam(this, l.key);
+                if (t == null && !chosen.contains(l.key)) continue;
                 row(l.label, t == null ? "Elegir" : t.name, v -> showTeams(l));
+                any = true;
             }
+        }
+        if (!any) {
+            TextView none = text(12, TEXT_DIM, regular);
+            none.setText("Prende una liga arriba para elegir tu equipo en ella.");
+            none.setPadding(dp(2), 0, 0, dp(10));
+            card.addView(none);
         }
         row("Foto del partido en el inicio", GameDay.photoOn(this) ? "Encendida" : "Apagada", v -> {
             Sports.set(this, "photo", !GameDay.photoOn(this));
