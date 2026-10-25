@@ -77,8 +77,9 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
   la Leagues Cup. El inicio sigue al que juega
   más pronto; los demás días dice cuál es tu próximo partido. En la fila Hoy, cada equipo tuyo que no juega
   trae su botón con su último partido y su tabla.
-- **Día de partido:** el inicio se pinta con los colores de tu equipo y, a la derecha, pone una foto reciente de
-  sus noticias en ESPN (cambia sola, sin notas tristes); si no hay ninguna, en la NFL un póster del QB titular en
+- **Día de partido:** el inicio se pinta con los colores de tu equipo y, a la derecha, pone la foto de la
+  crónica de su último triunfo en ESPN (siempre del partido: una jugada, un gol, un festejo; cambia con cada
+  victoria); si no hay ninguna, en la NFL un póster del QB titular en
   los colores del equipo con su número detrás, y en las demás ligas un estadio dibujado en sus colores (encendido
   de noche y con el escudo). En la mañana va suave; desde 3 horas antes, la cuenta regresiva en grande; durante el
   juego, el marcador grande (se actualiza cada 30 s); si gana, "¡Ganaron!" con confeti hasta la mañana siguiente.
