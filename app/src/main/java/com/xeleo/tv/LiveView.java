@@ -231,6 +231,20 @@ final class LiveView extends FrameLayout {
         return col;
     }
 
+    /**
+     * Whether two names say the same, ignoring case, accents' marks, symbols and words added at the end:
+     * "Azteca UNO -1 hora" and "Azteca UNO -1", or "Milenio Noticias" twice.
+     */
+    static boolean same(String a, String b) {
+        String x = plain(a), y = plain(b);
+        return !x.isEmpty() && !y.isEmpty() && (x.startsWith(y) || y.startsWith(x));
+    }
+
+    private static String plain(String s) {
+        String n = java.text.Normalizer.normalize(s == null ? "" : s, java.text.Normalizer.Form.NFD);
+        return n.replaceAll("\\p{M}", "").replaceAll("[^\\p{Alnum}]", "").toLowerCase(java.util.Locale.ROOT);
+    }
+
     /** Fills the preview with what the channel shows now. */
     private void showHero(Live.Channel ch, boolean newPicture) {
         shownChannel = ch;
@@ -241,6 +255,7 @@ final class LiveView extends FrameLayout {
         badge.setText(vix ? "ViX" : live ? "EN VIVO" : "AHORA");
         badge.setBackground(round(vix ? VIX : live ? RED : 0x33FFFFFF, dp(10)));
         if (p == null) {
+            channelName.setVisibility(View.GONE);   // the title is the channel's name already
             title.setText(ch.name);
             meta.setText(vix ? "Canal gratis de ViX  ·  OK lo abre en la app de ViX" : "");
             description.setText(vix ? "ViX no publica su programación; al abrirlo ves qué están pasando." : "");
@@ -248,15 +263,19 @@ final class LiveView extends FrameLayout {
             setProgress(0);
         } else {
             title.setText(p.title);
+            // A 24/7 channel's show is named like the channel ("Azteca UNO -1"): the name once, in big.
+            channelName.setVisibility(same(ch.name, p.title) ? View.GONE : View.VISIBLE);
             int left = (int) Math.max(1, (p.stop - now) / 60_000);
             StringBuilder m = new StringBuilder();
             if (!p.episode.isEmpty()) m.append(p.episode).append("  ·  ");
             m.append(hm.format(new Date(p.start))).append("–").append(hm.format(new Date(p.stop)))
                     .append("  ·  ").append(left < 60 ? "quedan " + left + " min" : "queda " + left / 60 + " h " + left % 60 + " min");
             meta.setText(m);
-            description.setText(p.description);
+            description.setText(same(p.description, p.title) ? "" : p.description);   // "Imagen TV+" again: no
             Live.Program n = ch.after(p);
-            next.setText(n == null ? "" : "Sigue a las " + hm.format(new Date(n.start)) + ":  " + n.title);
+            // What comes next only when it is something else.
+            next.setText(n == null || same(n.title, p.title) ? ""
+                    : "Sigue a las " + hm.format(new Date(n.start)) + ":  " + n.title);
             setProgress((float) (now - p.start) / (p.stop - p.start));
         }
         if (!newPicture) return;
@@ -617,7 +636,7 @@ final class LiveView extends FrameLayout {
         if (p != null) {
             Live.Program n = ch.after(p);
             when.setText(hm.format(new Date(p.start)) + "–" + hm.format(new Date(p.stop))
-                    + (n != null ? "  ·  Sigue: " + n.title : ""));
+                    + (n != null && !same(n.title, p.title) ? "  ·  Sigue: " + n.title : ""));
         } else {
             when.setText(vix ? "Abre en la app de ViX" : ch.name);
         }

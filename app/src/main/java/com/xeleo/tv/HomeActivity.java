@@ -1142,7 +1142,7 @@ public class HomeActivity extends Activity {
 
     private FrameLayout appsOverlay() {
         FrameLayout o = new FrameLayout(this);
-        o.setBackgroundColor(0xE60B0C10);
+        o.setBackgroundColor(0xFA0B0C10);   // almost solid: Home (a game's score) mustn't show through the grid
         ScrollView s = new ScrollView(this);
         s.setVerticalScrollBarEnabled(false);
         s.setClipChildren(false);
