@@ -198,7 +198,12 @@ final class GameDay {
     /** Headlines that are not for a celebration (ESPN's news are in English). */
     private static final String[] SAD = {"dead", "death", "dies", "died", "mourn", "funeral", "arrest", "charged",
             "suspend", "injur", "surgery", "torn", "out for", "lawsuit", "fired", "accus", "crash", "shooting",
-            "told to leave", "kicked out", "stall", " on ir", "benched", "fined", "feud", "dispute"};
+            "told to leave", "kicked out", "stall", " on ir", "benched", "fined", "feud", "dispute",
+            // Injury reports: "Evans, Bosa out vs. Atlanta", "exits with Achilles soreness"…
+            "out vs", "ruled out", "won't play", "will miss", "to miss", "exits", "sorenes", "questionable",
+            "doubtful", "achilles", "acl", "concussion", "hamstring", "ankle", "knee", "carted", "hurt",
+            // Not about the team on the field: the league office, owners, betting, fantasy.
+            "goodell", "commissioner", "owner", "meeting", "how to bet", "odds", "betting", "fantasy", "trade deadline"};
     private static final long FRESH_DAYS = 21;
 
     /**
