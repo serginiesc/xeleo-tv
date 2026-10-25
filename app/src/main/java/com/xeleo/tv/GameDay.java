@@ -62,7 +62,7 @@ final class GameDay {
 
     /** "los Chiefs", but "Portugal" or "México" without an article. */
     static String withArticle(String team) {
-        return Sports.NATIONS_NAMES.contains(team) ? team : "los " + team;
+        return Sports.isNation(team) ? team : "los " + team;
     }
 
     // ---------------------------------------------------------------- the last win, until the next morning
@@ -725,7 +725,7 @@ final class GameDay {
             note = null;
             Sports.Team me = g.side(abbr), them = g.other(abbr);
             String when = Sports.when(getContext(), g.start) + (g.broadcast.isEmpty() ? "" : "  ·  " + g.broadcast);
-            boolean nation = Sports.NATIONS_NAMES.contains(teamShort);
+            boolean nation = Sports.isNation(teamShort);
             switch (m) {
                 case MORNING: {
                     LinearLayout row = row();

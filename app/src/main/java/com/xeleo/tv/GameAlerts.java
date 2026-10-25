@@ -75,7 +75,7 @@ final class GameAlerts {
         for (Sports.MyTeam t : Sports.myTeams(service)) {
             Sports.League l = Sports.league(t.league);
             if (l == null) continue;
-            for (Sports.Game g : Sports.today(l)) if (g.side(t.abbr) != null) wait = Math.min(wait, look(t, g));
+            for (Sports.Game g : Sports.withCups(l, t)) if (Sports.plays(g, t)) wait = Math.min(wait, look(t, g));
         }
         return wait;
     }
@@ -112,7 +112,7 @@ final class GameAlerts {
     }
 
     private static String article(String team) {
-        return Sports.NATIONS_NAMES.contains(team) ? team : "los " + team;
+        return Sports.isNation(team) ? team : "los " + team;
     }
 
     /** The card, unless Home is on screen (it already shows the game). */

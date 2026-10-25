@@ -69,9 +69,15 @@ The app itself is in Spanish; screen names below are given as they appear on the
 
 ### Sports mode (quick menu → Deportes, off by default)
 
-- **A "Hoy" (Today) row** with the day's games of the leagues you pick (NFL, Liga MX, national teams, NBA, MLB),
-  with live scores.
-- **Your teams, one per league** (for example the Chiefs in the NFL and Santos in Liga MX). Home follows the one
+- **A "Hoy" (Today) row** with the day's games of the leagues you pick, with live scores:
+  - **Mexico:** Liga MX.
+  - **United States:** NFL, NBA, MLB, NHL and MLS.
+  - **Europe:** LaLiga, Premier League, Serie A, Bundesliga and Champions League.
+  - **National teams:** the whole World Cup and, in friendlies, qualifiers, Gold Cup, Nations League or Copa
+    América, your national team (any of them).
+- **Your teams, one per league** (for example the Chiefs in the NFL, Santos in Liga MX and Real Madrid in LaLiga),
+  in their cups too: Real Madrid in the Champions League, Europa League and Copa del Rey; Santos in the Concacaf
+  Champions Cup and Leagues Cup. Home follows the one
   that plays soonest; on other days it says when your next game is. In the Hoy row, each of your teams that
   isn't playing gets a button with its last game and its standings.
 - **Game day:** Home takes on your team's colors and, on the right, shows a recent photo from its ESPN news (it

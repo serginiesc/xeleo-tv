@@ -66,9 +66,15 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
 
 ### Modo Sports (menú rápido → Deportes, apagado de fábrica)
 
-- **Fila "Hoy"** con los partidos del día de las ligas que elijas (NFL, Liga MX, selecciones, NBA, MLB), con
-  marcador en vivo.
-- **Tus equipos, uno por liga** (por ejemplo Chiefs en NFL y Santos en Liga MX). El inicio sigue al que juega
+- **Fila "Hoy"** con los partidos del día de las ligas que elijas, con marcador en vivo:
+  - **México:** Liga MX.
+  - **Estados Unidos:** NFL, NBA, MLB, NHL y MLS.
+  - **Europa:** LaLiga, Premier League, Serie A, Bundesliga y Champions League.
+  - **Selecciones:** todo el Mundial y, en amistosos, eliminatorias, Copa Oro, Nations League o Copa América, tu
+    selección (cualquiera).
+- **Tus equipos, uno por liga** (por ejemplo Chiefs en NFL, Santos en Liga MX y Real Madrid en LaLiga), y también
+  en sus copas: el Real Madrid en la Champions, la Europa League y la Copa del Rey; Santos en la Concachampions y
+  la Leagues Cup. El inicio sigue al que juega
   más pronto; los demás días dice cuál es tu próximo partido. En la fila Hoy, cada equipo tuyo que no juega
   trae su botón con su último partido y su tabla.
 - **Día de partido:** el inicio se pinta con los colores de tu equipo y, a la derecha, pone una foto reciente de

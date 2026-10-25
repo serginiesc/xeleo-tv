@@ -37,32 +37,66 @@ import java.util.TimeZone;
  */
 final class Sports {
 
-    /** A league as ESPN names it, with our label. Selecciones covers several competitions, filtered to NATIONS. */
+    /**
+     * A league as ESPN names it, with our label and its group in Deportes. paths are its competitions (all their games
+     * go in the "Hoy" row); cups are the other competitions its teams play (the Champions League, a national cup),
+     * where only your team's games count. Selecciones covers several competitions, filtered to your nation.
+     */
     static final class League {
-        final String key, label, sport;
-        final String[] paths;
+        final String key, label, group, sport;
+        final String[] paths, cups;
 
-        League(String key, String label, String sport, String... paths) {
+        League(String key, String label, String group, String sport, String[] paths, String... cups) {
             this.key = key;
             this.label = label;
+            this.group = group;
             this.sport = sport;
             this.paths = paths;
+            this.cups = cups;
         }
     }
 
+    private static String[] p(String... paths) {
+        return paths;
+    }
+
+    /** The groups of Deportes, in their order. */
+    static final String[] GROUPS = {"México", "Estados Unidos", "Europa", "Selecciones"};
+
+    private static final String[] UEFA = {"soccer/uefa.champions", "soccer/uefa.europa"};
+    private static final String[] CONCACAF = {"soccer/concacaf.champions", "soccer/concacaf.leagues.cup"};
+
     static final League[] LEAGUES = {
-            new League("nfl", "NFL", "football", "football/nfl"),
-            new League("ligamx", "Liga MX", "soccer", "soccer/mex.1"),
-            new League("selecciones", "Selecciones", "soccer", "soccer/fifa.world", "soccer/fifa.friendly",
-                    "soccer/uefa.nations", "soccer/fifa.worldq.uefa", "soccer/concacaf.nations.league",
-                    "soccer/concacaf.gold", "soccer/uefa.euro"),
-            new League("nba", "NBA", "basketball", "basketball/nba"),
-            new League("mlb", "MLB", "baseball", "baseball/mlb"),
+            new League("ligamx", "Liga MX", "México", "soccer", p("soccer/mex.1"), CONCACAF),
+            new League("nfl", "NFL", "Estados Unidos", "football", p("football/nfl")),
+            new League("nba", "NBA", "Estados Unidos", "basketball", p("basketball/nba")),
+            new League("mlb", "MLB", "Estados Unidos", "baseball", p("baseball/mlb")),
+            new League("nhl", "NHL", "Estados Unidos", "hockey", p("hockey/nhl")),
+            new League("mls", "MLS", "Estados Unidos", "soccer", p("soccer/usa.1"), CONCACAF),
+            new League("laliga", "LaLiga", "Europa", "soccer", p("soccer/esp.1"),
+                    UEFA[0], UEFA[1], "soccer/esp.copa_del_rey"),
+            new League("premier", "Premier League", "Europa", "soccer", p("soccer/eng.1"),
+                    UEFA[0], UEFA[1], "soccer/eng.fa", "soccer/eng.league_cup"),
+            new League("seriea", "Serie A", "Europa", "soccer", p("soccer/ita.1"), UEFA[0], UEFA[1], "soccer/ita.coppa_italia"),
+            new League("bundesliga", "Bundesliga", "Europa", "soccer", p("soccer/ger.1"),
+                    UEFA[0], UEFA[1], "soccer/ger.dfb_pokal"),
+            new League("champions", "Champions League", "Europa", "soccer", p("soccer/uefa.champions")),
+            new League("selecciones", "Selecciones", "Selecciones", "soccer", p("soccer/fifa.world", "soccer/fifa.friendly",
+                    "soccer/uefa.nations", "soccer/fifa.worldq.uefa", "soccer/fifa.worldq.concacaf",
+                    "soccer/fifa.worldq.conmebol", "soccer/concacaf.nations.league", "soccer/concacaf.gold",
+                    "soccer/uefa.euro", "soccer/conmebol.america")),
     };
 
-    /** National teams shown under Selecciones (ESPN abbreviations). */
-    static final Set<String> NATIONS = new HashSet<>(java.util.Arrays.asList("POR", "MEX"));
-    static final Set<String> NATIONS_NAMES = new HashSet<>(java.util.Arrays.asList("Portugal", "México", "Mexico"));
+    /**
+     * Your national team (Selecciones), by ESPN abbreviation and name, set by load: outside the World Cup only its games
+     * show. Empty until you pick one; then the World Cup still shows whole.
+     */
+    private static volatile String nationAbbr = "", nationName = "";
+
+    /** A national team's name ("México", "Portugal") takes no article. */
+    static boolean isNation(String team) {
+        return team.equals(nationName) || team.equals("México") || team.equals("Mexico") || team.equals("Portugal");
+    }
 
     static League league(String key) {
         for (League l : LEAGUES) if (l.key.equals(key)) return l;
@@ -306,11 +340,18 @@ final class Sports {
         List<MyTeam> teams = myTeams(app);
         Set<String> teamLeagues = new HashSet<>();
         for (MyTeam t : teams) teamLeagues.add(t.league);
+        setNation(myTeam(app, "selecciones"));
         new Thread(() -> {
             List<Game> all = new ArrayList<>();
             for (League l : LEAGUES) {
                 if (!leagues.contains(l.key) && !teamLeagues.contains(l.key)) continue;
                 all.addAll(today(l));
+            }
+            // Your teams' cup games (Real Madrid in the Champions League), unless that competition is already in.
+            for (MyTeam t : teams) {
+                League l = league(t.league);
+                if (l == null || l.cups.length == 0) continue;
+                for (Game g : cups(l)) if (plays(g, t) && !has(all, g)) all.add(g);
             }
             // Your teams' games today; Home follows one: live first, then the next to start, then a finished one.
             List<Game> ours = new ArrayList<>();
@@ -318,7 +359,7 @@ final class Sports {
             MyTeam follow = null;
             for (MyTeam t : teams) {
                 for (Game g : all) {
-                    if (!g.leagueKey.equals(t.league) || g.side(t.abbr) == null) continue;
+                    if (!plays(g, t)) continue;
                     ours.add(g);
                     if (mine == null || rank(g) < rank(mine) || (rank(g) == rank(mine) && g.start < mine.start)) {
                         mine = g;
@@ -361,17 +402,55 @@ final class Sports {
         return false;
     }
 
+    /** Your team plays this game: the same sport and its ESPN id (an id holds across a club's competitions). */
+    static boolean plays(Game g, MyTeam t) {
+        League l = league(t.league);
+        return l != null && l.sport.equals(g.sport) && !t.id.isEmpty() && (t.id.equals(g.home.id) || t.id.equals(g.away.id));
+    }
+
+    private static boolean has(List<Game> games, Game g) {
+        for (Game x : games) if (x.id.equals(g.id) && x.sport.equals(g.sport)) return true;
+        return false;
+    }
+
+    /** Remembers your national team; another one means today's Selecciones have to be filtered again. */
+    private static void setNation(MyTeam t) {
+        String abbr = t == null ? "" : t.abbr, name = t == null ? "" : t.shortName.isEmpty() ? t.name : t.shortName;
+        if (abbr.equals(nationAbbr)) return;
+        nationAbbr = abbr;
+        nationName = name;
+        synchronized (CACHE) {
+            CACHE.remove("selecciones");
+        }
+    }
+
     /** Today's games (local date) of one league, cached. Never throws: an error just means no games. */
     static List<Game> today(League l) {
+        return fetch(l.key, l, l.paths);
+    }
+
+    /** Today's games in a league's cups (all of them; load keeps your team's), cached apart from the league's. */
+    static List<Game> cups(League l) {
+        return fetch(l.key + "+cups", l, l.cups);
+    }
+
+    /** A league's games today and your team's cup games: what game alerts watch. */
+    static List<Game> withCups(League l, MyTeam t) {
+        List<Game> out = new ArrayList<>(today(l));
+        for (Game g : cups(l)) if (plays(g, t) && !has(out, g)) out.add(g);
+        return out;
+    }
+
+    private static List<Game> fetch(String key, League l, String[] paths) {
         long now = System.currentTimeMillis();
         synchronized (CACHE) {
-            List<Game> cached = CACHE.get(l.key);
-            Long at = FETCHED.get(l.key);
+            List<Game> cached = CACHE.get(key);
+            Long at = FETCHED.get(key);
             if (cached != null && at != null && now - at < (anyLive(cached) ? 25_000 : 15 * 60_000)) return cached;
         }
         List<Game> games = new ArrayList<>();
         String date = new SimpleDateFormat("yyyyMMdd", Locale.ROOT).format(new Date());
-        for (String path : l.paths) {
+        for (String path : paths) {
             try {
                 JSONObject d = getSaved("https://site.api.espn.com/apis/site/v2/sports/" + path + "/scoreboard?dates=" + date,
                         "espn-" + path.replace('/', '_') + ".json");
@@ -381,7 +460,9 @@ final class Sports {
                     Game g = parse(events.getJSONObject(i), l);
                     if (g == null || !sameDay(g.start, now)) continue;
                     g.path = path;
-                    if (l.key.equals("selecciones") && !NATIONS.contains(g.home.abbr) && !NATIONS.contains(g.away.abbr)) continue;
+                    // National teams: the whole World Cup, and elsewhere (friendlies, qualifiers…) only yours.
+                    if (l.key.equals("selecciones") && !path.equals("soccer/fifa.world")
+                            && (nationAbbr.isEmpty() || g.side(nationAbbr) == null)) continue;
                     games.add(g);
                 }
             } catch (Exception ignored) {
@@ -389,8 +470,8 @@ final class Sports {
             }
         }
         synchronized (CACHE) {
-            CACHE.put(l.key, games);
-            FETCHED.put(l.key, now);
+            CACHE.put(key, games);
+            FETCHED.put(key, now);
         }
         return games;
     }
@@ -492,6 +573,8 @@ final class Sports {
         switch (sport) {
             case "soccer":
                 return clock.isEmpty() ? "En vivo" : clock;
+            case "hockey":   // three periods, then overtime
+                return (period > 3 ? "TE" : period + "º") + (clock.isEmpty() ? "" : "  " + clock);
             case "baseball": {
                 String sd = type.optString("shortDetail").toLowerCase(Locale.ROOT);
                 return (sd.startsWith("bot") ? "Baja " : sd.startsWith("mid") || sd.startsWith("end") ? "Fin " : "Alta ") + period + "ª";
@@ -549,6 +632,7 @@ final class Sports {
             {"paramount", "com.cbs.ca"},
             {"max", "com.wbd.stream"},
             {"hbo", "com.wbd.stream"},
+            {"tnt", "com.wbd.stream"},
             {"apple", "com.apple.atve.androidtv.appletv"},
             {"dazn", "com.dazn"},
     };
@@ -561,6 +645,11 @@ final class Sports {
             case "nfl": return new String[]{"ESPN", "Disney+", "Fox", "Canal 5", "Azteca 7", "Prime Video"};
             case "nba": return new String[]{"ESPN", "Disney+", "NBA League Pass"};
             case "mlb": return new String[]{"ESPN", "Disney+", "Fox"};
+            case "nhl": return new String[]{"ESPN", "Disney+"};
+            case "mls": return new String[]{"Apple TV"};
+            case "laliga": case "seriea": case "bundesliga": return new String[]{"ESPN", "Disney+", "Sky Sports"};
+            case "premier": return new String[]{"Sky Sports", "ESPN", "Disney+"};
+            case "champions": return new String[]{"Max", "TNT Sports"};
             default: return new String[0];
         }
     }
@@ -647,10 +736,30 @@ final class Sports {
         }
     }
 
-    /** All teams of a league, for the team picker (Selecciones: the followed nations). */
+    /** Countries as ESPN writes them, in Spanish. */
+    private static final String[][] COUNTRIES = {{"Mexico", "México"}, {"Spain", "España"}, {"Germany", "Alemania"},
+            {"France", "Francia"}, {"England", "Inglaterra"}, {"Brazil", "Brasil"}, {"United States", "Estados Unidos"},
+            {"USA", "Estados Unidos"}, {"Netherlands", "Países Bajos"}, {"Japan", "Japón"}, {"South Korea", "Corea del Sur"},
+            {"Belgium", "Bélgica"}, {"Switzerland", "Suiza"}, {"Croatia", "Croacia"}, {"Morocco", "Marruecos"},
+            {"Canada", "Canadá"}, {"Italy", "Italia"}, {"Scotland", "Escocia"}, {"Norway", "Noruega"},
+            {"Egypt", "Egipto"}, {"Turkey", "Turquía"}, {"Panama", "Panamá"}};
+
+    private static String spanish(String country) {
+        for (String[] c : COUNTRIES) if (c[0].equals(country)) return c[1];
+        return country;
+    }
+
+    /** All teams of a league, for the team picker (Selecciones: the World Cup's, or two of ours without network). */
     static List<Team> teams(League l) {
         List<Team> out = new ArrayList<>();
         if (l.key.equals("selecciones")) {
+            out = fetchTeams("soccer/fifa.world");
+            for (Team t : out) {
+                t.name = spanish(t.name);
+                t.shortName = spanish(t.shortName);
+            }
+            out.sort((a, b) -> a.name.compareToIgnoreCase(b.name));
+            if (!out.isEmpty()) return out;
             String[][] nations = {{"POR", "Portugal", "482", "DA291C", "0D6938"}, {"MEX", "México", "203", "006847", "CE1126"}};
             for (String[] n : nations) {
                 Team t = new Team();
@@ -665,8 +774,14 @@ final class Sports {
             }
             return out;
         }
+        return fetchTeams(l.paths[0]);
+    }
+
+    /** A competition's teams from ESPN, by name; empty without network. */
+    private static List<Team> fetchTeams(String path) {
+        List<Team> out = new ArrayList<>();
         try {
-            JSONObject d = get("https://site.api.espn.com/apis/site/v2/sports/" + l.paths[0] + "/teams");
+            JSONObject d = get("https://site.api.espn.com/apis/site/v2/sports/" + path + "/teams");
             JSONArray teams = d.getJSONArray("sports").getJSONObject(0).getJSONArray("leagues").getJSONObject(0)
                     .getJSONArray("teams");
             for (int i = 0; i < teams.length(); i++) {

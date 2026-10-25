@@ -75,30 +75,47 @@ public class SportsSettingsActivity extends Activity {
             refresh(0);
         });
 
+        // The leagues by where they are played: their chips for the "Hoy" row, then your team in each.
         label("Ligas en la fila \"Hoy\"");
-        GridLayout leagues = new GridLayout(this);
-        leagues.setColumnCount(3);
-        card.addView(leagues);
         Set<String> chosen = Sports.leagues(this);
-        for (Sports.League l : Sports.LEAGUES) {
-            boolean on = chosen.contains(l.key);
-            TextView chip = chip(l.label + (l.key.equals("selecciones") ? " (POR, MEX)" : ""), on);
-            chip.setOnClickListener(v -> {
-                Set<String> s = Sports.leagues(this);
-                if (!s.remove(l.key)) s.add(l.key);
-                Sports.set(this, "leagues", s);
-                refresh(card.indexOfChild(leagues));
-            });
-            GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
-            glp.setMargins(0, 0, dp(8), dp(8));
-            leagues.addView(chip, glp);
+        for (String group : Sports.GROUPS) {
+            TextView g = text(11, 0x99C4C7C5, regular);
+            g.setText(group.toUpperCase(java.util.Locale.ROOT));
+            g.setLetterSpacing(0.08f);
+            g.setPadding(dp(2), dp(4), 0, dp(6));
+            card.addView(g);
+            GridLayout leagues = new GridLayout(this);
+            leagues.setColumnCount(3);
+            card.addView(leagues);
+            for (Sports.League l : Sports.LEAGUES) {
+                if (!l.group.equals(group)) continue;
+                boolean on = chosen.contains(l.key);
+                TextView chip = chip(l.label, on);
+                chip.setOnClickListener(v -> {
+                    Set<String> s = Sports.leagues(this);
+                    if (!s.remove(l.key)) s.add(l.key);
+                    Sports.set(this, "leagues", s);
+                    refresh(card.indexOfChild(leagues));
+                });
+                GridLayout.LayoutParams glp = new GridLayout.LayoutParams();
+                glp.setMargins(0, 0, dp(8), dp(8));
+                leagues.addView(chip, glp);
+            }
         }
+        TextView cups = text(11, TEXT_DIM, regular);
+        cups.setText("Tu equipo también cuenta en sus copas: el Real Madrid en la Champions y la Copa del Rey, "
+                + "Santos en la Leagues Cup. Selecciones: todo el Mundial y, lo demás, solo tu selección.");
+        cups.setPadding(dp(2), dp(2), 0, dp(6));
+        card.addView(cups);
 
         // Your teams, one per league: Home follows the one that plays soonest.
         label("Tus equipos (uno por liga)");
-        for (Sports.League l : Sports.LEAGUES) {
-            Sports.MyTeam t = Sports.myTeam(this, l.key);
-            row(l.label, t == null ? "Elegir" : t.name, v -> showTeams(l));
+        for (String group : Sports.GROUPS) {
+            for (Sports.League l : Sports.LEAGUES) {
+                if (!l.group.equals(group) || l.key.equals("champions")) continue;   // its teams are in their leagues
+                Sports.MyTeam t = Sports.myTeam(this, l.key);
+                row(l.label, t == null ? "Elegir" : t.name, v -> showTeams(l));
+            }
         }
         row("Foto del partido en el inicio", GameDay.photoOn(this) ? "Encendida" : "Apagada", v -> {
             Sports.set(this, "photo", !GameDay.photoOn(this));
