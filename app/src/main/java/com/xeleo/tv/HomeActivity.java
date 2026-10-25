@@ -780,8 +780,7 @@ public class HomeActivity extends Activity {
         greeting.setVisibility(on ? View.GONE : View.VISIBLE);
         tagline.setVisibility(on ? View.GONE : View.VISIBLE);
         sports.setDark(on);   // darker chips read over the photo (it may rebuild the row, so before hiding it)
-        // The other games stay in sight, except under the countdown: that block is the tallest, and your team's.
-        if (m == GameDay.Moment.SOON) sports.setVisibility(View.GONE);
+        // The other games stay in sight in every moment, under your team's block.
         backdrop.setVisibility(on ? View.VISIBLE : View.GONE);
         ringColor = on ? color : Color.WHITE;
         if (!on) return;

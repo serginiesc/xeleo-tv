@@ -76,7 +76,9 @@ final class SportsStripView extends HorizontalScrollView {
     private static int frame(Sports.MyTeam t) {
         int c = t.color;
         int lum = (299 * ((c >> 16) & 0xFF) + 587 * ((c >> 8) & 0xFF) + 114 * (c & 0xFF)) / 1000;
-        return lum < 50 ? t.alt : c;
+        if (lum >= 50) return c;
+        int alt = t.alt, altLum = (299 * ((alt >> 16) & 0xFF) + 587 * ((alt >> 8) & 0xFF) + 114 * (alt & 0xFF)) / 1000;
+        return altLum >= 50 ? alt : 0xFFFFFFFF;   // both dark (Ravens: purple and black): white
     }
 
     /** Your team in this game, if any. */

@@ -754,7 +754,7 @@ final class GameDay {
                     over.setText(nation ? "HOY JUEGA" : "HOY JUEGAN LOS");
                     over.setLetterSpacing(0.04f);
                     names.addView(over);
-                    TextView name = text(46, 0xFFFFFFFF, medium);
+                    TextView name = text(40, 0xFFFFFFFF, medium);
                     name.setText(teamShort);
                     name.setFontVariationSettings("'wght' 700");
                     name.setShadowLayer(dp(10), 0, dp(2), 0x80000000);
@@ -763,11 +763,11 @@ final class GameDay {
                     addView(row);
                     TextView line = text(15, 0xE6FFFFFF, medium);
                     line.setText("vs " + them.shortName + "  ·  " + when);
-                    line.setPadding(0, dp(12), 0, 0);
+                    line.setPadding(0, dp(8), 0, 0);
                     addView(line);
                     LinearLayout box = new LinearLayout(getContext());
                     box.setOrientation(VERTICAL);
-                    box.setPadding(dp(17), dp(10), dp(17), dp(10));
+                    box.setPadding(dp(16), dp(6), dp(16), dp(7));
                     box.setMinimumWidth(dp(275));
                     GradientDrawable bg = new GradientDrawable();
                     bg.setCornerRadius(dp(15));
@@ -777,13 +777,13 @@ final class GameDay {
                     label.setText("FALTAN");
                     label.setLetterSpacing(0.1f);
                     box.addView(label);
-                    TextView left = text(28, 0xFFFFFFFF, medium);
+                    TextView left = text(24, 0xFFFFFFFF, medium);
                     String cd = Sports.countdown(g.start);
                     left.setText(cd.isEmpty() ? "Por empezar" : cd.replace("faltan ", ""));
                     left.setPadding(0, dp(4), 0, 0);
                     box.addView(left);
                     LayoutParams blp = new LayoutParams(-2, -2);
-                    blp.topMargin = dp(12);
+                    blp.topMargin = dp(8);
                     addView(box, blp);
                     break;
                 }
