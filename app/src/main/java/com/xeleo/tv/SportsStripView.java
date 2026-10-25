@@ -92,7 +92,20 @@ final class SportsStripView extends HorizontalScrollView {
         return false;
     }
 
+    /** On game day the chips get a dark glass, so they read over the team's photo. */
+    private boolean dark;
+    private List<Sports.Game> lastGames;
+    private List<Sports.MyTeam> lastTeams;
+
+    void setDark(boolean d) {
+        if (d == dark) return;
+        dark = d;
+        if (lastGames != null) show(lastGames, lastTeams);
+    }
+
     void show(List<Sports.Game> games, List<Sports.MyTeam> teams) {
+        lastGames = games;
+        lastTeams = teams;
         row.removeAllViews();
         ids = null;
         if (games.isEmpty()) {
@@ -226,7 +239,7 @@ final class SportsStripView extends HorizontalScrollView {
     private void style(View c, TextView score, TextView state, boolean mine, int myColor, boolean focused, boolean live) {
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(14));
-        bg.setColor(focused ? 0xF2FFFFFF : 0x33FFFFFF);
+        bg.setColor(focused ? 0xF2FFFFFF : dark ? 0xB3141A22 : 0x33FFFFFF);
         if (!focused) bg.setStroke(mine ? dp(2) : 1, mine ? (myColor | 0xFF000000) : 0x40FFFFFF);
         c.setBackground(bg);
         score.setTextColor(focused ? 0xFF15171C : 0xFFFFFFFF);

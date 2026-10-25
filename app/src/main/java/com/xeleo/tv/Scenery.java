@@ -142,6 +142,11 @@ final class Scenery {
 
     /** staticSky false leaves out the stars and clouds, which AmbientView draws moving. */
     static Bitmap paint(Phase phase, Kind kind, int w, int h, boolean staticSky) {
+        return paint(phase, kind, w, h, staticSky, false);
+    }
+
+    /** noSun leaves out the sun or moon (on game day, so it doesn't show through the team's photo). */
+    static Bitmap paint(Phase phase, Kind kind, int w, int h, boolean staticSky, boolean noSun) {
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -199,11 +204,13 @@ final class Scenery {
         }
 
         // Sun or moon with a soft glow; behind a covered sky only a faint glow is left.
-        p.setShader(new RadialGradient(sunX, sunY, sunR * 7, covered ? (glow & 0x00FFFFFF) | 0x22000000 : glow,
-                0x00FFFFFF, Shader.TileMode.CLAMP));
-        c.drawCircle(sunX, sunY, sunR * 7, p);
-        p.setShader(null);
-        p.setColor(covered ? 0x00000000 : sunColor);
+        if (!noSun) {
+            p.setShader(new RadialGradient(sunX, sunY, sunR * 7, covered ? (glow & 0x00FFFFFF) | 0x22000000 : glow,
+                    0x00FFFFFF, Shader.TileMode.CLAMP));
+            c.drawCircle(sunX, sunY, sunR * 7, p);
+            p.setShader(null);
+        }
+        p.setColor(covered || noSun ? 0x00000000 : sunColor);
         if (phase == Phase.NIGHT) {   // crescent: the moon minus an offset disc, so the sky shows through
             Path moon = new Path();
             moon.addCircle(sunX, sunY, sunR, Path.Direction.CW);

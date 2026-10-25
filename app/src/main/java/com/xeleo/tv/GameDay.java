@@ -735,7 +735,10 @@ final class GameDay {
                     row.addView(t);
                     addView(row);
                     TextView line = text(14, 0xE6FFFFFF, regular);
-                    line.setText("vs " + them.shortName + "  ·  " + when);
+                    // A small countdown, whole hours only ("faltan 9 h"); the big one comes three hours before.
+                    long left = (g.start - System.currentTimeMillis()) / 60_000;
+                    String cd = left <= 0 ? "" : left >= 60 ? "faltan " + left / 60 + " h" : "faltan " + left + " min";
+                    line.setText("vs " + them.shortName + "  ·  " + when + (cd.isEmpty() ? "" : "  ·  " + cd));
                     line.setPadding(dp(54), dp(4), 0, 0);
                     addView(line);
                     break;

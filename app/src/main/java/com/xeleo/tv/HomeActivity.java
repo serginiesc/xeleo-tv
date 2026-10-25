@@ -92,7 +92,7 @@ public class HomeActivity extends Activity {
     private GameDay.Backdrop backdrop;
     private GameDay.Hero hero;
     private GameDay.Moment heroMoment = GameDay.Moment.NONE;
-    private boolean previewCelebrated, liveTicking;
+    private boolean previewCelebrated, liveTicking, shownNoSun;
     private ConfettiView confetti;
     /** Your team's game today and its next one (Sports mode). */
     private Sports.Game myGame, nextGame;
@@ -643,12 +643,14 @@ public class HomeActivity extends Activity {
             wallpaperButton.setText(pinnedPhase == null ? "Fondo: Auto" : "Fondo: " + Scenery.label(pinnedPhase));
             styleGlassButton(wallpaperButton, wallpaperButton.hasFocus());
         }
-        if (phase == shownPhase && kind == shownKind) return;
+        boolean noSun = heroMoment != GameDay.Moment.NONE;   // on game day the sun would show through the photo
+        if (phase == shownPhase && kind == shownKind && noSun == shownNoSun) return;
         shownPhase = phase;
         shownKind = kind;
+        shownNoSun = noSun;
         DisplayMetrics dm = getResources().getDisplayMetrics();
         int w = Math.max(dm.widthPixels, dm.heightPixels), h = Math.min(dm.widthPixels, dm.heightPixels);
-        Bitmap bmp = Scenery.paint(phase, kind, w, h, false);   // stars and clouds move in AmbientView
+        Bitmap bmp = Scenery.paint(phase, kind, w, h, false, noSun);   // stars and clouds move in AmbientView
         ImageView in = showingA ? backB : backA, out = showingA ? backA : backB;
         in.setImageBitmap(bmp);
         if (animate) {
@@ -758,18 +760,22 @@ public class HomeActivity extends Activity {
             liveTicking = false;
             handler.removeCallbacks(liveTick);
         }
+        boolean was = heroMoment != GameDay.Moment.NONE;
         heroMoment = m;
         boolean on = m != GameDay.Moment.NONE;
+        if (on != was) updateScenery(false);   // the sky without its sun or moon on game day, and back
         hero.setVisibility(on ? View.VISIBLE : View.GONE);
         greeting.setVisibility(on ? View.GONE : View.VISIBLE);
         tagline.setVisibility(on ? View.GONE : View.VISIBLE);
+        sports.setDark(on);   // darker chips read over the photo (it may rebuild the row, so before hiding it)
         if (on && m != GameDay.Moment.MORNING) sports.setVisibility(View.GONE);
         backdrop.setVisibility(on ? View.VISIBLE : View.GONE);
         ringColor = on ? color : Color.WHITE;
         if (!on) return;
         boolean morning = m == GameDay.Moment.MORNING;
         boolean photo = GameDay.photoOn(this) && !(preview != null && GameDay.previewNoPhoto);
-        backdrop.set(color, morning ? 0.45f : 1f, photo ? (morning ? 0.45f : 1f) : 0f);
+        // The morning only hints at it; the full photo comes with the countdown, three hours before.
+        backdrop.set(color, morning ? 0.45f : 1f, photo ? (morning ? 0.25f : 1f) : 0f);
         hero.show(m, game, abbr, shortName, logo);
         Sports.Game shown = game;
         String gameLeague = league;
