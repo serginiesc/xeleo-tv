@@ -481,13 +481,16 @@ public class HomeActivity extends Activity {
     private void selectTab(int t) {
         if (t == TAB_LIVE && !Live.enabled(this)) t = TAB_HOME;
         if (moving != null) endMove();
+        // Fading in only over Home: from one tab to the other a fade would let Home flash through between them.
+        boolean fromHome = tab == TAB_HOME;
         tab = t;
         if (t == TAB_APPS) {
             if (appsOverlay.getVisibility() != View.VISIBLE) {
                 appsHint.setText("OK la abre  ·  Mantén OK para ponerla o quitarla del inicio");
-                appsOverlay.setAlpha(0f);
+                appsOverlay.animate().cancel();
+                appsOverlay.setAlpha(fromHome ? 0f : 1f);
                 appsOverlay.setVisibility(View.VISIBLE);
-                appsOverlay.animate().alpha(1f).setDuration(160).start();
+                if (fromHome) appsOverlay.animate().alpha(1f).setDuration(160).start();
             }
         } else {
             appsOverlay.setVisibility(View.GONE);
@@ -498,9 +501,10 @@ public class HomeActivity extends Activity {
                 root.addView(liveView, root.indexOfChild(bar), new FrameLayout.LayoutParams(-1, -1));
             }
             if (liveView.getVisibility() != View.VISIBLE) {
-                liveView.setAlpha(0f);
+                liveView.animate().cancel();
+                liveView.setAlpha(fromHome ? 0f : 1f);
                 liveView.setVisibility(View.VISIBLE);
-                liveView.animate().alpha(1f).setDuration(180).start();
+                if (fromHome) liveView.animate().alpha(1f).setDuration(180).start();
             }
             liveView.open();
         } else if (liveView != null && liveView.getVisibility() == View.VISIBLE) {
