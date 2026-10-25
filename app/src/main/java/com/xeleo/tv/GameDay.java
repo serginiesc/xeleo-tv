@@ -394,7 +394,8 @@ final class GameDay {
         /** Where it fades out: the top of the app row. */
         private int edge;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        private final Paint mask = new Paint(Paint.ANTI_ALIAS_FLAG);
+        /** Fades drawn over a layer; without antialiasing, which would leave a sharp column of photo at its edge. */
+        private final Paint mask = new Paint();
         private final ColorMatrixColorFilter grade;
 
         Backdrop(Context c) {
@@ -503,9 +504,9 @@ final class GameDay {
                 paint.setShader(null);
                 // In from the left, out at the bottom.
                 mask.setShader(new LinearGradient(x0 + 40 * k, 0, x0 + 460 * k, 0, 0, 0xFF000000, Shader.TileMode.CLAMP));
-                c.drawRect(x0, 0, w, ph, mask);
+                c.drawRect(x0 - 2, -2, w + 2, ph + 2, mask);
                 mask.setShader(new LinearGradient(0, ph - 170 * k, 0, ph, 0xFF000000, 0, Shader.TileMode.CLAMP));
-                c.drawRect(x0, 0, w, ph, mask);
+                c.drawRect(x0 - 2, -2, w + 2, ph + 2, mask);
                 // Its top left corner (stadium ads, the scoreboard) sits behind the tabs: out.
                 mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
                 float cx = x0 + 200 * k, cy = -30 * k;
@@ -515,7 +516,7 @@ final class GameDay {
                 squash.setScale(1f, 0.58f, cx, cy);
                 corner.setLocalMatrix(squash);
                 mask.setShader(corner);
-                c.drawRect(x0, 0, w, ph, mask);
+                c.drawRect(x0 - 2, -2, w + 2, ph + 2, mask);
                 c.restoreToCount(layer);
                 // A veil of the colour where the photo starts.
                 paint.setShader(new LinearGradient(x0, 0, x0 + 700 * k, 0, new int[]{tint(0), tint(110 * photoAlpha), tint(0)},
