@@ -72,6 +72,13 @@ final class SportsStripView extends HorizontalScrollView {
         return super.dispatchKeyEvent(e);
     }
 
+    /** Your team's colour for its chip's frame; its second colour when the first is too dark to see (Steelers). */
+    private static int frame(Sports.MyTeam t) {
+        int c = t.color;
+        int lum = (299 * ((c >> 16) & 0xFF) + 587 * ((c >> 8) & 0xFF) + 114 * (c & 0xFF)) / 1000;
+        return lum < 50 ? t.alt : c;
+    }
+
     /** Your team in this game, if any. */
     private static Sports.MyTeam ours(Sports.Game g, List<Sports.MyTeam> teams) {
         for (Sports.MyTeam t : teams) if (g.leagueKey.equals(t.league) && g.side(t.abbr) != null) return t;
@@ -153,7 +160,7 @@ final class SportsStripView extends HorizontalScrollView {
             casts[k] = TextUtils.join(", ", g.channels);
             int at = k++;
             Sports.MyTeam mine = ours(g, teams);
-            View chip = chip(g, mine != null, mine != null ? mine.color : 0);
+            View chip = chip(g, mine != null, mine != null ? frame(mine) : 0);
             chip.setOnClickListener(v -> GameActivity.open(getContext(), ids, paths, leagues, casts, at));
             row.addView(chip);
         }
@@ -203,7 +210,7 @@ final class SportsStripView extends HorizontalScrollView {
 
     /** Your team when it doesn't play today: opens the panel on its last game and its standings. */
     private View teamChip(Sports.MyTeam t, String[] ids, String[] paths, String[] leagues, String[] casts, int at) {
-        int myColor = t.color;
+        int myColor = frame(t);
         LinearLayout c = new LinearLayout(getContext());
         c.setGravity(Gravity.CENTER_VERTICAL);
         c.setPadding(dp(10), 0, dp(14), 0);

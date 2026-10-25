@@ -705,7 +705,8 @@ public class HomeActivity extends Activity {
 
     /**
      * Game day (GameDay): in the morning a quiet line over a light wash and a faint photo, with the "Hoy" row still
-     * there; from three hours before, during the game and after a win, the hero alone with the full colour and photo.
+     * there; from three hours before, during the game and after a win, the full colour and photo, with the "Hoy" row
+     * under the score but not under the countdown.
      */
     private void showGameDay(Sports.Game mine, Sports.Game next) {
         String preview = GameDay.preview;
@@ -768,7 +769,8 @@ public class HomeActivity extends Activity {
         greeting.setVisibility(on ? View.GONE : View.VISIBLE);
         tagline.setVisibility(on ? View.GONE : View.VISIBLE);
         sports.setDark(on);   // darker chips read over the photo (it may rebuild the row, so before hiding it)
-        if (on && m != GameDay.Moment.MORNING) sports.setVisibility(View.GONE);
+        // The other games stay in sight, except under the countdown: that block is the tallest, and your team's.
+        if (m == GameDay.Moment.SOON) sports.setVisibility(View.GONE);
         backdrop.setVisibility(on ? View.VISIBLE : View.GONE);
         ringColor = on ? color : Color.WHITE;
         if (!on) return;
