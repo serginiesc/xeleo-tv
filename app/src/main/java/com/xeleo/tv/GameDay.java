@@ -197,16 +197,18 @@ final class GameDay {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     /** Headlines that are not for a celebration (ESPN's news are in English). */
     private static final String[] SAD = {"dead", "death", "dies", "died", "mourn", "funeral", "arrest", "charged",
-            "suspend", "injur", "surgery", "torn", "out for", "lawsuit", "fired", "accus", "crash", "shooting"};
+            "suspend", "injur", "surgery", "torn", "out for", "lawsuit", "fired", "accus", "crash", "shooting",
+            "told to leave", "kicked out", "stall", " on ir", "benched", "fined", "feud", "dispute"};
     private static final long FRESH_DAYS = 21;
 
     /**
-     * The newest fitting photo of the team's ESPN news, looked up again every three hours: from the last three weeks,
-     * about this team (one or two teams tagged, not a league-wide list), and not about deaths, arrests, injuries or
-     * suspensions. Calls back on the main thread, with nulls when no article fits.
+     * A fitting photo of the team's ESPN news, looked up again every three hours: from the last three weeks, about
+     * this team (one or two teams tagged, not a league-wide list), and not about deaths, arrests, injuries, fines or
+     * a player sent out. On game day the newest story about the matchup (also tagged with the rival) wins, then one
+     * about your team alone, then any. Calls back on the main thread, with nulls when no article fits.
      */
-    static void photo(String leagueKey, String teamId, PhotoCallback cb) {
-        String key = leagueKey + ":" + teamId;
+    static void photo(String leagueKey, String teamId, String rival, PhotoCallback cb) {
+        String key = leagueKey + ":" + teamId + ":" + rival;
         String[] hit = PHOTO.get(key);
         Long at = PHOTO_AT.get(key);
         if (hit != null && at != null && System.currentTimeMillis() - at < 3 * 3_600_000L) {
@@ -217,7 +219,7 @@ final class GameDay {
         Sports.League l = Sports.league(leagueKey);
         if (l == null || teamId.isEmpty()) return;
         new Thread(() -> {
-            String[] found = find(l.paths[0], teamId);
+            String[] found = find(l.paths[0], teamId, rival);
             PHOTO.put(key, found == null ? new String[0] : found);
             PHOTO_AT.put(key, System.currentTimeMillis());
             MAIN.post(() -> cb.onPhoto(found == null ? null : found[0], found == null ? null : found[1]));
@@ -307,7 +309,9 @@ final class GameDay {
         return h == null ? "" : h.optString("href");
     }
 
-    private static String[] find(String path, String teamId) {
+    private static String[] find(String path, String teamId, String rival) {
+        String[] best = null;
+        int bestScore = -1;
         try {
             JSONObject d = Sports.get("https://site.api.espn.com/apis/site/v2/sports/" + path + "/news?team=" + teamId + "&limit=25");
             JSONArray articles = d.optJSONArray("articles");
@@ -320,11 +324,18 @@ final class GameDay {
                 if (published.length() < 19) continue;
                 if (now - iso.parse(published.substring(0, 19)).getTime() > FRESH_DAYS * 86_400_000L) continue;
                 int teams = 0;
+                boolean matchup = false;
                 JSONArray cats = a.optJSONArray("categories");
                 for (int k = 0; cats != null && k < cats.length(); k++) {
-                    if ("team".equals(cats.getJSONObject(k).optString("type"))) teams++;
+                    JSONObject cat = cats.getJSONObject(k);
+                    if (!"team".equals(cat.optString("type"))) continue;
+                    teams++;
+                    if (!rival.isEmpty() && rival.equalsIgnoreCase(cat.optString("description"))) matchup = true;
                 }
                 if (teams < 1 || teams > 2) continue;
+                // The matchup's story first, then one about your team alone; among equals, the newest (listed first).
+                int score = matchup ? 2 : teams == 1 ? 1 : 0;
+                if (score <= bestScore) continue;
                 String text = (a.optString("headline") + " " + a.optString("description")).toLowerCase(Locale.ROOT);
                 boolean sad = false;
                 for (String w : SAD) if (text.contains(w)) sad = true;
@@ -336,13 +347,16 @@ final class GameDay {
                     if (!"header".equals(img.optString("type")) || !url.contains("a.espncdn.com/photo/")) continue;
                     // ESPN keeps every cut of a photo; the wide one fits the screen.
                     String big = url.replaceFirst("_\\d+x\\d+_(16-9|3-2|4-3|1-1)\\.", "_1296x729_16-9.");
-                    return new String[]{big, url};
+                    best = new String[]{big, url};
+                    bestScore = score;
+                    break;
                 }
+                if (bestScore == 2) break;   // nothing beats the newest matchup story
             }
         } catch (Exception ignored) {
-            // No network or a changed answer: just the colours this time.
+            // No network or a changed answer: what was found so far, or just the colours.
         }
-        return null;
+        return best;
     }
 
     // ---------------------------------------------------------------- what is drawn behind Home

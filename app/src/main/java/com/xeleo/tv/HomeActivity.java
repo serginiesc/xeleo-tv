@@ -785,7 +785,8 @@ public class HomeActivity extends Activity {
             String lg = league, id = teamId, crestUrl = Sports.smallLogo(logo, 256);
             int posterAlt = alt;
             if (!crestUrl.isEmpty()) Logos.cutout(crestUrl, backdrop::setCrest);   // for the drawn stadium
-            GameDay.photo(league, teamId, (big, small) -> {
+            String rival = game.side(abbr) == null ? "" : game.other(abbr).name;   // "Seattle Seahawks", as ESPN tags
+            GameDay.photo(league, teamId, rival, (big, small) -> {
                 if (big != null && !posterOnly) {
                     Logos.photo(big, small, b -> { if (heroMoment != GameDay.Moment.NONE) backdrop.setPhoto(b); });
                 } else if ("nfl".equals(lg)) {
