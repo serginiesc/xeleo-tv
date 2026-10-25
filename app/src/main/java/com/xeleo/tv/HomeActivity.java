@@ -387,7 +387,12 @@ public class HomeActivity extends Activity {
         LinearLayout pills = new LinearLayout(this);
         pills.setGravity(Gravity.CENTER_VERTICAL);
         pills.setPadding(dp(4), dp(4), dp(4), dp(4));
-        pills.setBackground(glass(dp(22)));
+        // Dark glass, so the tabs read over any sky or game-day photo (light glass got lost on bright ones).
+        GradientDrawable barGlass = new GradientDrawable();
+        barGlass.setCornerRadius(dp(22));
+        barGlass.setColor(0x6614181F);
+        barGlass.setStroke(1, GLASS_EDGE);
+        pills.setBackground(barGlass);
         // Inicio, Apps and En vivo are tabs: landing on one shows it, the bar stays. Gemini and Ajustes are actions,
         // after a gap, and need OK.
         tabPills.clear();
@@ -552,9 +557,11 @@ public class HomeActivity extends Activity {
     private void stylePill(TextView t, boolean focused, boolean selected) {
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(17));
-        bg.setColor(focused ? FOCUS_BG : (selected ? 0x40FFFFFF : Color.TRANSPARENT));
+        bg.setColor(focused ? FOCUS_BG : (selected ? 0x4DFFFFFF : Color.TRANSPARENT));
         t.setBackground(bg);
         t.setTextColor(focused ? FOCUS_TEXT : TEXT);
+        if (focused) t.setShadowLayer(0, 0, 0, 0);
+        else t.setShadowLayer(dp(4), 0, dp(1), 0x99000000);
     }
 
     // ---------------------------------------------------------------- bottom
