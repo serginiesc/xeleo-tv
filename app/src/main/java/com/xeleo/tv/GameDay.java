@@ -321,18 +321,72 @@ final class GameDay {
                 JSONObject type = comp.optJSONObject("status") == null ? null : comp.getJSONObject("status").optJSONObject("type");
                 if (type == null || !"post".equals(type.optString("state"))) continue;
                 boolean won = false;
+                String rivalId = "";
                 JSONArray sides = comp.getJSONArray("competitors");
                 for (int k = 0; k < sides.length(); k++) {
                     JSONObject c = sides.getJSONObject(k);
-                    if (teamId.equals(c.getJSONObject("team").optString("id"))) won = c.optBoolean("winner");
+                    String id = c.getJSONObject("team").optString("id");
+                    if (teamId.equals(id)) won = c.optBoolean("winner");
+                    else rivalId = id;
                 }
                 if (!won) continue;
                 tried++;
                 String[] photo = recapPhoto(path, e.optString("id"));
+                if (photo == null) photo = spanishStory(path, teamId, rivalId, e.optString("date"));
                 if (photo != null) return photo;
             }
         } catch (Exception ignored) {
             // No network or a changed answer: just the colours this time.
+        }
+        return null;
+    }
+
+    /** ESPN Deportes' news of the team, fetched once per search (it covers the leagues ESPN writes no recaps for). */
+    private static JSONArray spanishNews;
+    private static String spanishNewsKey = "";
+
+    /**
+     * For a league without English recaps (Liga MX): ESPN Deportes' story about that game, the one published after
+     * kickoff (not the preview) and within a day and a half, tagged with both teams, with a photo.
+     */
+    private static String[] spanishStory(String path, String teamId, String rivalId, String date) {
+        if (rivalId.isEmpty() || date.length() < 16) return null;
+        try {
+            String key = path + ":" + teamId;
+            if (!key.equals(spanishNewsKey)) {
+                spanishNews = Sports.get("https://site.api.espn.com/apis/site/v2/sports/" + path + "/news?team=" + teamId
+                        + "&lang=es&region=mx&limit=50").optJSONArray("articles");
+                spanishNewsKey = key;
+            }
+            SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.ROOT);
+            iso.setTimeZone(TimeZone.getTimeZone("UTC"));
+            long kickoff = iso.parse(date.substring(0, 16)).getTime();
+            for (int i = 0; spanishNews != null && i < spanishNews.length(); i++) {
+                JSONObject a = spanishNews.getJSONObject(i);
+                String published = a.optString("published");
+                if (published.length() < 16) continue;
+                long at = iso.parse(published.substring(0, 16)).getTime();
+                if (at < kickoff + 90 * 60_000L || at > kickoff + 36 * 3_600_000L) continue;   // after the game
+                boolean us = false, them = false;
+                JSONArray cats = a.optJSONArray("categories");
+                for (int k = 0; cats != null && k < cats.length(); k++) {
+                    JSONObject c = cats.getJSONObject(k);
+                    if (!"team".equals(c.optString("type"))) continue;
+                    String id = c.optString("teamId");
+                    if (id.equals(teamId)) us = true;
+                    if (id.equals(rivalId)) them = true;
+                }
+                if (!us || !them) continue;
+                JSONArray images = a.optJSONArray("images");
+                for (int k = 0; images != null && k < images.length(); k++) {
+                    JSONObject img = images.getJSONObject(k);
+                    String url = img.optString("url");
+                    if ("header".equals(img.optString("type")) && url.contains("a.espncdn.com/photo/")) {
+                        return new String[]{url.replaceFirst("_\\d+x\\d+_(16-9|3-2|4-3|1-1)\\.", "_1296x729_16-9."), url};
+                    }
+                }
+            }
+        } catch (Exception ignored) {
         }
         return null;
     }
