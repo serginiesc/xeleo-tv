@@ -62,7 +62,7 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
 - **Notificaciones** (la campana del menú rápido, con cuántas hay; Ajustes en el inicio lleva un punto): sin el
   launcher de Google TV no hay otro lugar para verlas, y algunas cosas solo se ofrecen ahí, como la actualización
   del control. OK la abre, mantener OK la borra.
-- **Temas de temporada:** del 29 al 31 de octubre, Halloween (cielo morado y naranja, luna llena, murciélagos y calabazas en los cerros, "Feliz Halloween" en el saludo); el 1 y 2 de noviembre, Día de Muertos (papel picado y pétalos de cempasúchil cayendo). El día de partido de tu equipo va primero. Se apagan en Personalizar.
+- **Temas de temporada**, de México y de Estados Unidos, que se prenden solos en su fecha: Halloween (29–31 oct: luna llena, murciélagos, calabazas), Día de Muertos (1–2 nov: papel picado, cempasúchil), Navidad (20–25 dic: luces y nieve), Año Nuevo (31 dic – 1 ene: fuegos artificiales), San Valentín (14 feb: corazones), primavera (20–21 mar: flores), Día de las Madres (10 de mayo y el de Estados Unidos, segundo domingo de mayo: rosas), 4 de Julio (fuegos rojos, blancos y azules) y Fiestas Patrias (15–16 sep: papel picado tricolor y fuegos, "¡Viva México!"). El saludo cambia con cada una. El día de partido de tu equipo va primero. Se apagan en Personalizar.
 - **Protector de pantalla** a juego: paisaje, reloj grande que se mueve poco a poco, clima y la canción.
 
 ### Modo Sports (menú rápido → Deportes, apagado de fábrica)
@@ -219,7 +219,7 @@ abre el menú de XELEO; el del Chromecast no, así que ahí el menú se abre con
   (61 lluvia, 95 tormenta, 45 neblina, 71 nieve, 2 nubes, -1 el clima real).
 - **Ver un aviso de partido de ejemplo:**
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SPORTS_TEST`
-- **Ver un tema de temporada** (`halloween`, `muertos`; `off` vuelve al de la fecha):
+- **Ver un tema de temporada** (`halloween`, `muertos`, `navidad`, `anionuevo`, `valentin`, `primavera`, `madres`, `julio4`, `patrias`; `off` vuelve al de la fecha):
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SEASON_PREVIEW --es season halloween`
 - **Ver el día de partido con tu equipo** (`morning`, `soon`, `live`, `won`; `off` vuelve al real; `--ez photo
   false` solo colores, `--ez poster true` el póster o el estadio en vez de la foto, `--es league ligamx` tu equipo de esa liga):

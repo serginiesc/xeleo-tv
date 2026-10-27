@@ -65,7 +65,7 @@ The app itself is in Spanish; screen names below are given as they appear on the
 - **Notifications** (the bell in the quick menu, with how many there are; Ajustes on Home gets a dot): without
   Google TV's launcher there is no other place to see them, and some things are only offered there, such as the
   remote's firmware update. OK opens one, holding OK dismisses it.
-- **Season themes:** from 29 to 31 October, Halloween (a purple and orange sky, a full moon, bats and pumpkins on the hills, "Feliz Halloween" in the greeting); on 1 and 2 November, Día de Muertos (papel picado and cempasúchil petals falling). Your team's game day goes first. They can be turned off in Personalizar.
+- **Season themes**, Mexican and American, turning on by themselves on their dates: Halloween (29–31 Oct: full moon, bats, pumpkins), Día de Muertos (1–2 Nov: papel picado, cempasúchil), Christmas (20–25 Dec: lights and snow), New Year (31 Dec – 1 Jan: fireworks), Valentine's (14 Feb: hearts), spring (20–21 Mar: flowers), Mother's Day (10 May and the US one, the second Sunday of May: roses), 4th of July (red, white and blue fireworks) and Fiestas Patrias (15–16 Sep: tricolour papel picado and fireworks, "¡Viva México!"). The greeting changes with each. Your team's game day goes first. They can be turned off in Personalizar.
 - **A matching screensaver:** landscape, a big clock that moves slowly, weather and the song playing.
 
 ### Sports mode (quick menu → Deportes, off by default)
@@ -222,7 +222,7 @@ XELEO's menu; the Chromecast's doesn't, so there the menu opens with Home → Aj
   (61 rain, 95 storm, 45 fog, 71 snow, 2 clouds, -1 the real weather).
 - **See a sample game alert:**
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SPORTS_TEST`
-- **See a season theme** (`halloween`, `muertos`; `off` goes back to the date's):
+- **See a season theme** (`halloween`, `muertos`, `navidad`, `anionuevo`, `valentin`, `primavera`, `madres`, `julio4`, `patrias`; `off` goes back to the date's):
   `adb shell am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SEASON_PREVIEW --es season halloween`
 - **See game day with your team** (`morning`, `soon`, `live`, `won`; `off` goes back to the real one;
   `--ez photo false` colors only, `--ez poster true` the poster or stadium instead of the photo,

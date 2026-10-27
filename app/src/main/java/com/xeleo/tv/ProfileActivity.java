@@ -98,7 +98,7 @@ public class ProfileActivity extends Activity {
     private boolean searching;
 
     private String seasonLabel() {
-        return "Temas de temporada (Halloween, Día de Muertos):  " + (SeasonView.enabled(this) ? "Encendidos" : "Apagados");
+        return "Temas de temporada (Navidad, 15 de septiembre…):  " + (SeasonView.enabled(this) ? "Encendidos" : "Apagados");
     }
 
     /** Looks the city up (Open-Meteo geocoding, no key), saves the first match and closes; says so if none. */

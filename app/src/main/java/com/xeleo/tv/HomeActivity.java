@@ -701,6 +701,7 @@ public class HomeActivity extends Activity {
         if (festive != null) part = festive;
         String owner = Profile.userName(this);
         String hello = owner.isEmpty() ? part : part + ", " + owner;
+        if (festive != null) hello += SeasonView.suffix(seasonView.season());   // "¡Viva México, Sergio!"
         String line = "Relájate  ·  Mira  ·  Explora";
         String abbr = Sports.teamAbbr(this), team = Sports.teamShort(this);
         // On game day the hero takes this place (GameDay); after a loss or a tie Home looks as usual.
