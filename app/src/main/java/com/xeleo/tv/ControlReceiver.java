@@ -15,6 +15,8 @@ import android.content.Intent;
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST   (a reminder card in a few seconds)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.OPEN_NOTIFICATION --es pkg com.google.android.tv.dfuservice
  * (opens that app's notification, as tapping it would: here the remote's firmware update)
+ *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SEASON_PREVIEW --es season halloween
+ * (a season's theme on Home now: halloween or muertos; off goes back to the date's)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.GAMEDAY_PREVIEW --es moment live
  * (game day on Home with your team: morning, soon, live or won; off goes back to the real one; --ez photo false
  * shows only the colours, --ez poster true the poster instead of the news photo, --es league ligamx your team
@@ -57,6 +59,11 @@ public class ControlReceiver extends BroadcastReceiver {
         } else if ("com.xeleo.tv.OPEN_NOTIFICATION".equals(action)) {
             String pkg = intent.getStringExtra("pkg");
             setResultData(pkg != null && MediaListener.openApp(context, pkg) ? "opened" : "no notification from " + pkg);
+        } else if ("com.xeleo.tv.SEASON_PREVIEW".equals(action)) {
+            String s = intent.getStringExtra("season");
+            SeasonView.preview = s == null || s.equals("off") ? null : s;
+            context.sendBroadcast(new Intent(REFRESH).setPackage(context.getPackageName()));
+            setResultData("season preview " + SeasonView.preview);
         } else if ("com.xeleo.tv.GAMEDAY_PREVIEW".equals(action)) {
             String m = intent.getStringExtra("moment");
             GameDay.preview = m == null || m.equals("off") ? null : m;

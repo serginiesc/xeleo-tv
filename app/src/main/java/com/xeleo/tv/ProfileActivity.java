@@ -58,6 +58,17 @@ public class ProfileActivity extends Activity {
         EditText userName = field(card, "Nombre en el saludo (vacío: sin nombre)", Profile.userName(this));
         EditText city = field(card, "Ciudad del clima", Profile.weatherCity(this));
         city.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        // Halloween, Día de Muertos… on Home on their days (SeasonView); OK switches it, saved at once.
+        TextView season = button(seasonLabel(), null);
+        season.setGravity(Gravity.CENTER_VERTICAL);
+        season.setPadding(dp(14), 0, dp(14), 0);
+        season.setOnClickListener(v -> {
+            SeasonView.setEnabled(this, !SeasonView.enabled(this));
+            season.setText(seasonLabel());
+        });
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, dp(40));
+        slp.topMargin = dp(14);
+        card.addView(season, slp);
         status = text(12, TEXT_DIM, regular);
         status.setPadding(dp(2), dp(8), 0, 0);
         card.addView(status);
@@ -85,6 +96,10 @@ public class ProfileActivity extends Activity {
 
     private TextView status;
     private boolean searching;
+
+    private String seasonLabel() {
+        return "Temas de temporada (Halloween, Día de Muertos):  " + (SeasonView.enabled(this) ? "Encendidos" : "Apagados");
+    }
 
     /** Looks the city up (Open-Meteo geocoding, no key), saves the first match and closes; says so if none. */
     private void findCity(String name) {

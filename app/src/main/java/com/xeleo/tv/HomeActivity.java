@@ -90,6 +90,7 @@ public class HomeActivity extends Activity {
     private SportsStripView sports;
     /** Game day (GameDay): the colour and photo behind Home, and the block in place of the greeting. */
     private GameDay.Backdrop backdrop;
+    private SeasonView seasonView;
     private GameDay.Hero hero;
     private GameDay.Moment heroMoment = GameDay.Moment.NONE;
     private boolean previewCelebrated, liveTicking, shownNoSun;
@@ -192,6 +193,10 @@ public class HomeActivity extends Activity {
         root.addView(ambient, new FrameLayout.LayoutParams(-1, -1));
         precip = new PrecipView(this);
         root.addView(precip, new FrameLayout.LayoutParams(-1, -1));
+        // Halloween and Día de Muertos over the sky, on their days (SeasonView).
+        seasonView = new SeasonView(this);
+        seasonView.setVisibility(View.GONE);
+        root.addView(seasonView, new FrameLayout.LayoutParams(-1, -1));
         // Game day: your team's colour over the sky and a photo from its news.
         backdrop = new GameDay.Backdrop(this);
         backdrop.setVisibility(View.GONE);
@@ -326,6 +331,7 @@ public class HomeActivity extends Activity {
         handler.removeCallbacks(minuteTick);
         handler.postDelayed(minuteTick, 60_000);
         ambient.setRunning(true);
+        seasonView.setRunning(true);
         if (getCurrentFocus() == null && firstCard != null) {
             View card = firstCard;
             card.post(card::requestFocus);   // after layout, so the card grows from its centre
@@ -339,6 +345,7 @@ public class HomeActivity extends Activity {
         handler.removeCallbacks(liveTick);
         liveTicking = false;
         ambient.setRunning(false);
+        seasonView.setRunning(false);
         if (moving != null) endMove();
     }
 
@@ -654,7 +661,12 @@ public class HomeActivity extends Activity {
             wallpaperButton.setText(pinnedPhase == null ? "Fondo: Auto" : "Fondo: " + Scenery.label(pinnedPhase));
             styleGlassButton(wallpaperButton, wallpaperButton.hasFocus());
         }
-        boolean noSun = heroMoment != GameDay.Moment.NONE;   // on game day the sun would show through the photo
+        // The season's theme, unless your team plays (game day goes first).
+        SeasonView.Season season = heroMoment != GameDay.Moment.NONE ? SeasonView.Season.NONE : SeasonView.today(this);
+        seasonView.setSeason(season);
+        // On game day the sun would show through the photo; on Halloween the theme brings its own big moon, and on
+        // Día de Muertos it would peek out behind the papel picado.
+        boolean noSun = heroMoment != GameDay.Moment.NONE || season != SeasonView.Season.NONE;
         if (phase == shownPhase && kind == shownKind && noSun == shownNoSun) return;
         shownPhase = phase;
         shownKind = kind;
@@ -685,6 +697,8 @@ public class HomeActivity extends Activity {
     private void updateGreeting() {
         int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         String part = h < 5 ? "Buenas noches" : h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
+        String festive = SeasonView.greeting(seasonView.season());   // "Feliz Halloween" on its days
+        if (festive != null) part = festive;
         String owner = Profile.userName(this);
         String hello = owner.isEmpty() ? part : part + ", " + owner;
         String line = "Relájate  ·  Mira  ·  Explora";
