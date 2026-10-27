@@ -26,7 +26,7 @@ import java.util.List;
 
 /**
  * A small player for whatever is playing on the TV (Spotify, YouTube...): cover, title, artist, the app's name
- * and previous / play-pause / next. Reads Android's active media sessions, which needs notification access for
+ * and previous / play-pause / next; OK on the cover opens that app. Reads Android's active media sessions, which needs notification access for
  * {@link MediaListener}; without it, or with nothing playing, the view stays hidden.
  */
 final class NowPlayingView extends LinearLayout {
@@ -84,6 +84,18 @@ final class NowPlayingView extends LinearLayout {
             }
         });
         art.setBackgroundColor(0x33FFFFFF);
+        // The cover is a button too: OK opens the app that is playing, at its player.
+        art.setFocusable(true);
+        art.setClickable(true);
+        art.setContentDescription("Abrir la app");
+        art.setOnClickListener(v -> openApp());
+        art.setOnFocusChangeListener((v, f) -> {
+            GradientDrawable ring = new GradientDrawable();
+            ring.setCornerRadius(dp(8));
+            ring.setStroke(f ? dp(3) : 0, 0xFFFFFFFF);
+            v.setForeground(f ? ring : null);
+            v.animate().scaleX(f ? 1.08f : 1f).scaleY(f ? 1.08f : 1f).setDuration(120).start();
+        });
         addView(art, new LayoutParams(dp(artSize), dp(artSize)));
 
         LinearLayout texts = new LinearLayout(context);
@@ -111,6 +123,46 @@ final class NowPlayingView extends LinearLayout {
                 v.setFocusable(false);
             }
         }
+        art.setFocusable(false);
+        art.setClickable(false);
+    }
+
+    /**
+     * Opens the app that is playing: at its player when it says where that is (the session's activity, as its
+     * notification does), else at its start. From quick settings the panel closes behind it.
+     */
+    private void openApp() {
+        if (controller == null) return;
+        Context c = getContext();
+        boolean opened = false;
+        android.app.PendingIntent player = controller.getSessionActivity();
+        if (player != null) {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= 34) {
+                    // Android 14 lets a sender start the activity only when it says so (Home may start activities).
+                    android.app.ActivityOptions o = android.app.ActivityOptions.makeBasic()
+                            .setPendingIntentBackgroundActivityStartMode(
+                                    android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                    player.send(c, 0, null, null, null, null, o.toBundle());
+                } else {
+                    player.send();
+                }
+                opened = true;
+            } catch (android.app.PendingIntent.CanceledException | RuntimeException ignored) {
+            }
+        }
+        if (!opened) {
+            PackageManager pm = c.getPackageManager();
+            android.content.Intent launch = pm.getLeanbackLaunchIntentForPackage(controller.getPackageName());
+            if (launch == null) launch = pm.getLaunchIntentForPackage(controller.getPackageName());
+            if (launch == null) return;
+            try {
+                c.startActivity(launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (RuntimeException e) {
+                return;
+            }
+        }
+        if (panelStyle && c instanceof android.app.Activity) ((android.app.Activity) c).finish();
     }
 
     private TextView text(float sp, int color, Typeface tf) {
