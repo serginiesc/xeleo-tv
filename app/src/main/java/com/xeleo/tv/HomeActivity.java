@@ -91,6 +91,8 @@ public class HomeActivity extends Activity {
     /** Game day (GameDay): the colour and photo behind Home, and the block in place of the greeting. */
     private GameDay.Backdrop backdrop;
     private SeasonView seasonView;
+    /** What is playing, on Home (the quick settings panel has its own). */
+    private NowPlayingView player;
     private GameDay.Hero hero;
     private GameDay.Moment heroMoment = GameDay.Moment.NONE;
     private boolean previewCelebrated, liveTicking, shownNoSun;
@@ -175,6 +177,7 @@ public class HomeActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Sports.init(this);
+        if (Perf.light(this)) Logos.light();   // smaller image caches on small boxes
         density = getResources().getDisplayMetrics().density;
         regular = getResources().getFont(R.font.outfit_regular);
         medium = getResources().getFont(R.font.outfit_medium);
@@ -246,7 +249,7 @@ public class HomeActivity extends Activity {
         rclp.topMargin = dp(16);
         page.addView(recentsRow, rclp);
 
-        NowPlayingView player = new NowPlayingView(this, false, regular, medium);
+        player = new NowPlayingView(this, false, regular, medium);
         LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(-2, -2);
         plp.gravity = Gravity.CENTER_HORIZONTAL;
         plp.topMargin = dp(14);
@@ -676,12 +679,14 @@ public class HomeActivity extends Activity {
         Bitmap bmp = Scenery.paint(phase, kind, w, h, false, noSun);   // stars and clouds move in AmbientView
         ImageView in = showingA ? backB : backA, out = showingA ? backA : backB;
         in.setImageBitmap(bmp);
+        // The old landscape is let go once the new one covers it: two full-screen pictures only while they cross.
         if (animate) {
             in.animate().alpha(1f).setDuration(1500).start();
-            out.animate().alpha(0f).setDuration(1500).start();
+            out.animate().alpha(0f).setDuration(1500).withEndAction(() -> { if (out.getAlpha() == 0f) out.setImageBitmap(null); }).start();
         } else {
             in.setAlpha(1f);
             out.setAlpha(0f);
+            out.setImageBitmap(null);
         }
         showingA = !showingA;
     }
@@ -723,6 +728,8 @@ public class HomeActivity extends Activity {
             showGameDay(mine, next);
             // The screen is 540 dp tall: with the "Hoy" row or the hero and the player there is no room left for
             // Recientes, so they step aside then (the score matters more on game day).
+            // With the "Hoy" row there is no room for the player either: it stays in the quick settings panel.
+            player.setHidden(sports.getVisibility() == View.VISIBLE || hero.getVisibility() == View.VISIBLE);
             recentsRow.setVisibility(sports.getVisibility() == View.VISIBLE || hero.getVisibility() == View.VISIBLE
                     ? View.GONE : recentsRow.getChildCount() > 0 ? View.VISIBLE : View.GONE);
             updateGreeting();
@@ -1350,6 +1357,8 @@ public class HomeActivity extends Activity {
     }
 
     private void openQuickSettings() {
+        // The focus goes back to the tab on screen, so Ajustes doesn't stay lit beside it behind the panel.
+        if (tab < tabPills.size() && getCurrentFocus() == settingsPill) tabPills.get(tab).requestFocus();
         openQuickSettings(this);
     }
 

@@ -71,14 +71,21 @@ final class SnakeRing extends View {
         invalidate();
     }
 
+    private long lastDraw;
+
     private void startSpin() {
         if (!on || moving || !isAttachedToWindow() || spin != null) return;
         spin = ValueAnimator.ofFloat(0f, 1f);
         spin.setDuration(2400);
-        spin.setRepeatCount(ValueAnimator.INFINITE);
+        // In light mode two turns, then it rests lit; otherwise it keeps going.
+        spin.setRepeatCount(Perf.light(getContext()) ? 1 : ValueAnimator.INFINITE);
         spin.setInterpolator(new LinearInterpolator());
         spin.addUpdateListener(a -> {
             phase = (float) a.getAnimatedValue();
+            // A light this slow looks the same at 30 frames a second, at half the drawing.
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - lastDraw < 30) return;
+            lastDraw = now;
             invalidate();
         });
         spin.start();

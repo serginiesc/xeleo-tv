@@ -112,9 +112,22 @@ final class SportsStripView extends HorizontalScrollView {
         if (lastGames != null) show(lastGames, lastTeams);
     }
 
+    /** What the row shows now; the same again (back on Home, the minute's refresh) leaves it alone, so it doesn't flash. */
+    private String shown = "";
+
     void show(List<Sports.Game> games, List<Sports.MyTeam> teams) {
         lastGames = games;
         lastTeams = teams;
+        StringBuilder key = new StringBuilder(dark ? "d" : "l");
+        for (Sports.MyTeam t : teams) key.append('|').append(t.league).append(t.id);
+        for (Sports.Game g : games) {
+            key.append('|').append(g.id).append(g.state).append(g.detail).append(g.home.score).append('-').append(g.away.score);
+        }
+        if (key.toString().equals(shown) && row.getChildCount() > 0) {
+            setVisibility(games.isEmpty() ? GONE : VISIBLE);
+            return;
+        }
+        shown = key.toString();
         row.removeAllViews();
         ids = null;
         if (games.isEmpty()) {

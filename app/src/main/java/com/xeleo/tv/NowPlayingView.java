@@ -38,6 +38,14 @@ final class NowPlayingView extends LinearLayout {
     private final ImageView playPause;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private MediaController controller;
+    /** Kept out of sight even when something plays (Home, while the "Hoy" row needs the room). */
+    private boolean hidden;
+
+    void setHidden(boolean h) {
+        if (h == hidden) return;
+        hidden = h;
+        render();
+    }
 
     private final MediaController.Callback callback = new MediaController.Callback() {
         @Override
@@ -262,7 +270,7 @@ final class NowPlayingView extends LinearLayout {
 
     private void render() {
         MediaMetadata md = controller != null ? controller.getMetadata() : null;
-        if (md == null) {
+        if (md == null || hidden) {
             setVisibility(GONE);
             return;
         }

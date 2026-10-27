@@ -104,7 +104,6 @@ final class SeasonView extends View {
         return s == Season.PATRIAS ? "!" : "";
     }
 
-    private static final long FRAME_MS = 33;
     private static final int BATS = 7, BITS = 60, FLAGS = 11, BURSTS = 4, SPARKS = 36, BULBS = 26;
     private static final int[] PICADO = {0xFFE91E63, 0xFFFF9800, 0xFF8E24AA, 0xFF43A047, 0xFFFFD600, 0xFF1E88E5};
     private static final int[] TRICOLOR = {0xFF006847, 0xFFF5F5F5, 0xFFCE1126};
@@ -144,8 +143,13 @@ final class SeasonView extends View {
     private int[] fireColors;
     private float nextBurst;
 
+    private final boolean light;
+    private final long frameMs;
+
     SeasonView(Context c) {
         super(c);
+        light = Perf.light(c);
+        frameMs = Perf.frameMs(c);
     }
 
     Season season() {
@@ -229,7 +233,7 @@ final class SeasonView extends View {
     }
 
     private void bits(int n, int[] colors, int shape, boolean up) {
-        bits = n;
+        bits = light ? n / 2 : n;
         bitColors = colors;
         bitShape = shape;
         rising = up;
@@ -282,7 +286,7 @@ final class SeasonView extends View {
         if (fireColors != null) fireworks(c, w, h, dt);
         if (bits > 0) drawBits(c, w, h, dt);
 
-        if (running) postInvalidateDelayed(FRAME_MS);
+        if (running) postInvalidateDelayed(frameMs);
     }
 
     // ---------------------------------------------------------------- Halloween

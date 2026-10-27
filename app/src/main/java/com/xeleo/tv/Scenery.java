@@ -147,9 +147,10 @@ final class Scenery {
 
     /** noSun leaves out the sun or moon (on game day, so it doesn't show through the team's photo). */
     static Bitmap paint(Phase phase, Kind kind, int w, int h, boolean staticSky, boolean noSun) {
-        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        // Opaque, in half the memory of ARGB (the landscape needs no transparency); dithered so gradients don't band.
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
         Canvas c = new Canvas(bmp);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
         Random rnd = new Random(7);
         float horizon = h * 0.62f;
 

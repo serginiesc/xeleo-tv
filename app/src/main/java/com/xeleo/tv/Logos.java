@@ -130,6 +130,12 @@ final class Logos {
         });
     }
 
+    /** Light mode (Perf): half the room for logos and pictures. */
+    static void light() {
+        CACHE.resize(2 * 1024 * 1024);
+        PHOTOS.resize(3 * 1024 * 1024);
+    }
+
     /** Downloads a picture into the cache ahead of time (En vivo's first preview), unless it is there. */
     static void warm(String url) {
         if (url.isEmpty() || PHOTOS.get(url) != null) return;

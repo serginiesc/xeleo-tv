@@ -38,7 +38,7 @@ final class AmbientView extends View {
     private float time;
 
     // Stars: position, size, brightness and twinkle; the whole field drifts slowly to the right.
-    private boolean stars;
+    private boolean starsOn;
     private final float[] sx = new float[STARS], sy = new float[STARS], sr = new float[STARS];
     private final float[] sa = new float[STARS], sf = new float[STARS], sp = new float[STARS];
     private float starDrift;
@@ -59,8 +59,16 @@ final class AmbientView extends View {
     private float birdsX = -1, birdsY, birdsV;
     private long nextBirds;
 
+    /** Light mode (Perf): fewer stars and clouds, no comets, fewer frames. */
+    private final boolean light;
+    private final long frameMs;
+    private final int stars;
+
     AmbientView(Context context) {
         super(context);
+        light = Perf.light(context);
+        frameMs = Perf.frameMs(context);
+        stars = light ? STARS / 2 : STARS;
     }
 
     /** The light and weather to show; rebuilds the sky when either changes. */
@@ -81,8 +89,8 @@ final class AmbientView extends View {
 
     private void build(int w, int h) {
         built = true;
-        stars = phase == Scenery.Phase.NIGHT && !Scenery.covered(kind);
-        for (int i = 0; i < STARS; i++) {
+        starsOn = phase == Scenery.Phase.NIGHT && !Scenery.covered(kind);
+        for (int i = 0; i < stars; i++) {
             sx[i] = random.nextFloat() * w;
             sy[i] = random.nextFloat() * h * 0.5f;   // above the mountain tops
             sr[i] = 0.6f + random.nextFloat() * (random.nextInt(12) == 0 ? 2.2f : 1.1f);
@@ -92,7 +100,7 @@ final class AmbientView extends View {
         }
 
         for (Bitmap b : cloudBmp) if (b != null) b.recycle();
-        int n = Scenery.cloudCount(phase, kind);
+        int n = light ? (Scenery.cloudCount(phase, kind) + 1) / 2 : Scenery.cloudCount(phase, kind);
         cloudBmp = new Bitmap[n];
         cx = new float[n];
         cy = new float[n];
@@ -130,19 +138,19 @@ final class AmbientView extends View {
         lastFrame = now;
         time += dt;
 
-        if (stars) drawStars(canvas, w, dt);
+        if (starsOn) drawStars(canvas, w, dt);
         drawClouds(canvas, w, dt);
-        if (stars) drawMeteor(canvas, w, h, now, dt);
+        if (starsOn) drawMeteor(canvas, w, h, now, dt);
         if (birdsWanted()) drawBirds(canvas, w, h, now, dt);
 
-        if (running && isAttachedToWindow() && getWindowVisibility() == VISIBLE) postInvalidateDelayed(FRAME_MS);
+        if (running && isAttachedToWindow() && getWindowVisibility() == VISIBLE) postInvalidateDelayed(frameMs);
     }
 
     private void drawStars(Canvas canvas, int w, float dt) {
         starDrift = (starDrift + w * 0.0006f * dt) % w;   // one screen width in about half an hour
         paint.setShader(null);
         paint.setStyle(Paint.Style.FILL);
-        for (int i = 0; i < STARS; i++) {
+        for (int i = 0; i < stars; i++) {
             float x = sx[i] + starDrift;
             if (x > w) x -= w;
             float twinkle = 0.65f + 0.35f * (float) Math.sin(time * sf[i] + sp[i]);
@@ -163,7 +171,7 @@ final class AmbientView extends View {
     private void drawMeteor(Canvas canvas, int w, int h, long now, float dt) {
         if (meteorT < 0) {
             if (now < nextMeteor) return;
-            comet = random.nextInt(4) == 0;   // now and then a slow comet instead of a quick shooting star
+            comet = !light && random.nextInt(4) == 0;   // now and then a slow comet instead of a quick shooting star
             meteorX = w * (0.15f + random.nextFloat() * 0.7f);
             meteorY = h * (0.04f + random.nextFloat() * 0.2f);
             boolean left = random.nextBoolean();

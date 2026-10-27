@@ -72,13 +72,13 @@ public class QuickSettingsActivity extends Activity {
 
         NowPlayingView player = new NowPlayingView(this, true, regular, medium);
         LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(-1, -2);
-        mlp.topMargin = dp(14);
+        mlp.topMargin = dp(10);
         panel.addView(player, mlp);
 
         GridLayout tiles = new GridLayout(this);
         tiles.setColumnCount(2);
         tiles.setClipChildren(false);
-        tiles.setPadding(0, dp(12), 0, 0);
+        tiles.setPadding(0, dp(8), 0, 0);
         panel.addView(tiles);
 
         // Starts the screensaver now: Android TV Settings' "sleep" voice action (the onn has no Somnambulator).
@@ -283,9 +283,9 @@ public class QuickSettingsActivity extends Activity {
 
         GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
         lp.width = dp(119);
-        lp.height = dp(48);
+        lp.height = dp(42);   // six rows plus the player fit the screen
         int col = grid.getChildCount() % 2;
-        lp.setMargins(col == 0 ? 0 : dp(3), 0, col == 0 ? dp(3) : 0, dp(6));
+        lp.setMargins(col == 0 ? 0 : dp(3), 0, col == 0 ? dp(3) : 0, dp(5));
         grid.addView(tile, lp);
         return tile;
     }
