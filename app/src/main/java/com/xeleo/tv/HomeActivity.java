@@ -493,7 +493,7 @@ public class HomeActivity extends Activity {
         tab = t;
         if (t == TAB_APPS) {
             if (appsOverlay.getVisibility() != View.VISIBLE) {
-                appsHint.setText("OK la abre  ·  Mantén OK para ponerla o quitarla del inicio");
+                appsHint.setText("OK la abre  ·  Mantén OK para más opciones");
                 appsOverlay.animate().cancel();
                 appsOverlay.setAlpha(fromHome ? 0f : 1f);
                 appsOverlay.setVisibility(View.VISIBLE);
@@ -1068,7 +1068,7 @@ public class HomeActivity extends Activity {
             }
             if (hold && card.getParent() == appsGrid) {
                 swallowOk = true;
-                toggleHome((App) card.getTag());
+                showAppMenu((App) card.getTag());
                 return true;
             }
             return false;
@@ -1108,6 +1108,98 @@ public class HomeActivity extends Activity {
             return true;
         }
         return keyCode == KeyEvent.KEYCODE_DPAD_UP || ok;
+    }
+
+    /**
+     * Holding OK on an app in Todas las apps: a small menu to put it on Home (or take it off), stop it, uninstall it
+     * or open its system page. Stopping ends its background processes (Android lets only the system force-stop an
+     * app); uninstalling asks Android's own confirmation.
+     */
+    private void showAppMenu(App app) {
+        android.app.Dialog d = new android.app.Dialog(this);
+        d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(18), dp(16), dp(18), dp(14));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(20));
+        bg.setColor(0xFF131D23);
+        card.setBackground(bg);
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView icon = new ImageView(this);
+        try {
+            icon.setImageDrawable(getPackageManager().getApplicationIcon(app.pkg));
+        } catch (PackageManager.NameNotFoundException e) {
+            icon.setImageDrawable(app.banner);
+        }
+        head.addView(icon, new LinearLayout.LayoutParams(dp(28), dp(28)));
+        TextView name = text(16, TEXT, medium);
+        name.setText(app.label);
+        name.setPadding(dp(12), 0, 0, 0);
+        head.addView(name);
+        card.addView(head);
+        long opened = android.os.SystemClock.uptimeMillis();
+        boolean home = onHome(app);
+        View first = menuItem(card, home ? "Quitar del inicio" : "Poner en inicio", opened, () -> {
+            d.dismiss();
+            toggleHome(app);
+        });
+        menuItem(card, "Forzar detención", opened, () -> {
+            d.dismiss();
+            android.app.ActivityManager am = getSystemService(android.app.ActivityManager.class);
+            am.killBackgroundProcesses(app.pkg);
+            appsHint.setText("Se detuvo: " + app.label);
+        });
+        menuItem(card, "Desinstalar", opened, () -> {
+            d.dismiss();
+            try {
+                startActivity(new Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + app.pkg))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (ActivityNotFoundException | SecurityException e) {
+                appsHint.setText("No se pudo desinstalar " + app.label);
+            }
+        });
+        menuItem(card, "Información de la app", opened, () -> {
+            d.dismiss();
+            try {
+                startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.parse("package:" + app.pkg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (ActivityNotFoundException | SecurityException ignored) {
+            }
+        });
+        d.setContentView(card, new ViewGroup.LayoutParams(dp(300), -2));
+        if (d.getWindow() != null) d.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        d.show();
+        first.post(first::requestFocus);
+    }
+
+    /** One row of the app menu; it ignores the release of the long press that opened the menu. */
+    private View menuItem(LinearLayout card, String label, long opened, Runnable action) {
+        TextView t = text(14, TEXT, medium);
+        t.setText(label);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setPadding(dp(14), 0, dp(14), 0);
+        t.setFocusable(true);
+        t.setClickable(true);
+        t.setOnFocusChangeListener((v, f) -> {
+            GradientDrawable b = new GradientDrawable();
+            b.setCornerRadius(dp(12));
+            b.setColor(f ? FOCUS_BG : 0xFF1C262C);
+            v.setBackground(b);
+            ((TextView) v).setTextColor(f ? FOCUS_TEXT : TEXT);
+        });
+        GradientDrawable b = new GradientDrawable();
+        b.setCornerRadius(dp(12));
+        b.setColor(0xFF1C262C);
+        t.setBackground(b);
+        t.setOnClickListener(v -> {
+            if (android.os.SystemClock.uptimeMillis() - opened > 400) action.run();
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(42));
+        lp.topMargin = dp(8);
+        card.addView(t, lp);
+        return t;
     }
 
     /** Adds the app to the end of Home, or takes it off; it stays in Todas las apps either way. */

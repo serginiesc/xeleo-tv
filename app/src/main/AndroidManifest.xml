@@ -11,6 +11,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Updates from GitHub Releases (Updater): Android still asks for the OK on screen each time. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Todas las apps > hold OK: uninstall (Android asks to confirm) and stop an app (its background processes). -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
     <!-- Android 11+ package visibility: the TV apps shown as cards. -->
     <queries>

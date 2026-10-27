@@ -48,7 +48,8 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
   que juega). Mientras te mueves por la fila el marco queda quieto; la luz arranca al detenerte.
 - **Tus apps, solo las que eliges:** al principio salen las primeras 6; las demás quedan en Todas las apps.
   - En el inicio, deja presionado OK sobre una app para moverla con ◀ ▶, o quitarla con ▼.
-  - En Todas las apps, deja presionado OK para ponerla o quitarla del inicio (las del inicio llevan ✓).
+  - En Todas las apps, deja presionado OK para su menú: ponerla o quitarla del inicio (las del inicio llevan ✓),
+    forzar detención, desinstalar o abrir su información.
   - El botón **Agregar**, al final de la fila, lleva a Todas las apps.
 - **Recientes:** las últimas apps que abriste, vengan del inicio, del control o de Gemini.
 - **Reproductor:** lo que suena en Spotify, YouTube, etc., con anterior / pausa / siguiente, en el inicio y en el

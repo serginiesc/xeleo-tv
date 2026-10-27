@@ -51,7 +51,8 @@ The app itself is in Spanish; screen names below are given as they appear on the
   While you move along the row the frame stays still; the light starts when you stop.
 - **Only the apps you choose:** the first 6 show at first; the rest stay in All apps.
   - On Home, hold OK on an app to move it with ◀ ▶, or take it off with ▼.
-  - In All apps, hold OK to put it on Home or take it off (the ones on Home have a ✓).
+  - In All apps, hold OK for its menu: put it on Home or take it off (the ones on Home have a ✓), force stop,
+    uninstall or open its info.
   - The **Agregar (Add)** button, at the end of the row, goes to All apps.
 - **Recents:** the last apps you opened, whether from Home, the remote or Gemini.
 - **Player:** what's playing on Spotify, YouTube, etc., with previous / pause / next, on Home and in the quick
