@@ -6,7 +6,7 @@ Pantalla de inicio para el **onn 4K Streaming Box** (Google TV), sin anuncios ni
 aparece es lo que tú instalaste. Hecha en un onn 4K y probada también en un Chromecast con Google TV (HD), los
 dos con Android 14; debería funcionar en otros aparatos con Google TV o Android TV, pero no se ha probado en ellos.
 
-![Inicio de día con la fila Hoy de partidos y las apps](docs/screenshots/inicio-dia.jpg)
+![Inicio de día con la fila de partidos y las apps](docs/screenshots/inicio-dia.jpg)
 
 | De noche | Día de partido de tu equipo |
 |---|---|
@@ -68,7 +68,7 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
 
 ### Modo Sports (menú rápido → Deportes, apagado de fábrica)
 
-- **Fila "Hoy"** con los partidos del día de las ligas que elijas, con marcador en vivo:
+- **Fila "Partidos"** con los partidos del día de las ligas que elijas, con marcador en vivo:
   - **México:** Liga MX.
   - **Estados Unidos:** NFL, NBA, MLB, NHL y MLS.
   - **Europa:** LaLiga, Premier League, Serie A, Bundesliga y Champions League.
@@ -77,7 +77,7 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
 - **Tus equipos, uno por liga** (por ejemplo Chiefs en NFL, Santos en Liga MX y Real Madrid en LaLiga), y también
   en sus copas: el Real Madrid en la Champions, la Europa League y la Copa del Rey; Santos en la Concachampions y
   la Leagues Cup. El inicio sigue al que juega
-  más pronto; los demás días dice cuál es tu próximo partido. En la fila Hoy, cada equipo tuyo que no juega
+  más pronto; los demás días dice cuál es tu próximo partido. En la fila Partidos, cada equipo tuyo que no juega
   trae su botón con su último partido y su tabla.
 - **Equipo principal** (Ajustes > Deportes, con dos equipos o más): si juegan a la vez, el inicio sigue a ese.
 - **Previa:** hasta 3 días antes del partido de tu equipo, el inicio lo anuncia en sus colores y con su foto muy suave ("El domingo juegan los Chiefs · faltan 2 días"). Si ese día hay un tema de temporada, va primero el tema.
@@ -89,7 +89,7 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
   juego, el marcador grande (se actualiza cada 30 s); si gana, "¡Ganaron!" con confeti hasta la mañana siguiente.
   Si pierde, el inicio vuelve a la normalidad. OK sobre el marcador abre el panel del partido. La foto se apaga en
   Ajustes > Deportes.
-- **Panel del partido:** OK sobre un partido de "Hoy" abre marcador por periodo, líderes, comparativa de
+- **Panel del partido:** OK sobre un partido de la fila abre marcador por periodo, líderes, comparativa de
   equipos, la tabla de su grupo y el próximo partido. ◀ ▶ pasan a los otros partidos; mientras se juega se
   actualiza cada 30 s.
 - **Dónde verlo:** en el panel, los canales que da ESPN y por dónde suele ir en México esa liga (ViX, TUDN,

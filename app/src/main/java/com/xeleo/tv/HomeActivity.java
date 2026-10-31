@@ -718,6 +718,13 @@ public class HomeActivity extends Activity {
         tagline.setText(line);
         // Only when it has something to say (a game more than three days away); game day has its own block.
         tagline.setVisibility(line.isEmpty() || hero.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+        // Without that line there is room to spare: the greeting and the row sit a little lower, centred in the gap.
+        int top = dp(line.isEmpty() ? 54 : 34);
+        LinearLayout.LayoutParams glp = (LinearLayout.LayoutParams) greeting.getLayoutParams();
+        if (glp.topMargin != top) {
+            glp.topMargin = top;
+            greeting.setLayoutParams(glp);
+        }
     }
 
     // ---------------------------------------------------------------- sports mode

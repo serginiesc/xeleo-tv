@@ -8,7 +8,7 @@ Android 14; it should work on other Google TV or Android TV devices, but it hasn
 
 The app itself is in Spanish; screen names below are given as they appear on the TV, with their meaning.
 
-![Home by day with the Hoy (Today) row of games and the apps](docs/screenshots/inicio-dia.jpg)
+![Home by day with the row of games and the apps](docs/screenshots/inicio-dia.jpg)
 
 | At night | Your team's game day |
 |---|---|
@@ -71,7 +71,7 @@ The app itself is in Spanish; screen names below are given as they appear on the
 
 ### Sports mode (quick menu → Deportes, off by default)
 
-- **A "Hoy" (Today) row** with the day's games of the leagues you pick, with live scores:
+- **A "Partidos" (Games) row** with the day's games of the leagues you pick, with live scores:
   - **Mexico:** Liga MX.
   - **United States:** NFL, NBA, MLB, NHL and MLS.
   - **Europe:** LaLiga, Premier League, Serie A, Bundesliga and Champions League.
@@ -80,7 +80,7 @@ The app itself is in Spanish; screen names below are given as they appear on the
 - **Your teams, one per league** (for example the Chiefs in the NFL, Santos in Liga MX and Real Madrid in LaLiga),
   in their cups too: Real Madrid in the Champions League, Europa League and Copa del Rey; Santos in the Concacaf
   Champions Cup and Leagues Cup. Home follows the one
-  that plays soonest; on other days it says when your next game is. In the Hoy row, each of your teams that
+  that plays soonest; on other days it says when your next game is. In the Partidos row, each of your teams that
   isn't playing gets a button with its last game and its standings.
 - **Main team** (Ajustes > Deportes, with two teams or more): if they play at once, Home follows that one.
 - **Preview:** up to 3 days before your team's game, Home announces it in the team's colors with a very soft photo ("El domingo juegan los Chiefs · faltan 2 días"). If a season theme is on that day, the theme goes first.
@@ -91,7 +91,7 @@ The app itself is in Spanish; screen names below are given as they appear on the
   a big score (refreshed every 30 s); if your team wins, "¡Ganaron!" with confetti until the next morning. If it
   loses, Home goes back to normal. OK on the score opens the game panel. The photo can be turned off in
   Ajustes > Deportes.
-- **Game panel:** OK on a game in "Hoy" opens the score by period, leaders, team stats, its group's standings
+- **Game panel:** OK on a game in that row opens the score by period, leaders, team stats, its group's standings
   and the next game. ◀ ▶ move to the other games; while a game is on it refreshes every 30 s.
 - **Where to watch:** in the panel, the channels ESPN lists and where that league usually airs in Mexico (ViX,
   TUDN, Azteca 7, Canal 5, ESPN/Disney+, Fox…), with a button to open the app if you have it.

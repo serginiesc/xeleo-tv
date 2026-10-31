@@ -131,7 +131,7 @@ final class SportsStripView extends HorizontalScrollView {
         }
         setVisibility(VISIBLE);
         TextView title = new TextView(getContext());
-        title.setText("Hoy");
+        title.setText("Partidos");   // today's, and your teams' next ones
         title.setTextSize(13);
         title.setTypeface(medium);
         title.setTextColor(0xCCFFFFFF);

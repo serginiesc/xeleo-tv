@@ -76,7 +76,7 @@ public class SportsSettingsActivity extends Activity {
         });
 
         // The leagues by where they are played: their chips for the "Hoy" row, then your team in each.
-        label("Ligas en la fila \"Hoy\"");
+        label("Ligas en la fila de partidos");
         Set<String> chosen = Sports.leagues(this);
         for (String group : Sports.GROUPS) {
             TextView g = text(11, 0x99C4C7C5, regular);
