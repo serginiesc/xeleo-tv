@@ -147,6 +147,11 @@ final class SportsStripView extends HorizontalScrollView {
             for (Sports.Game g : games) if (g.leagueKey.equals(t.league) && g.side(t.abbr) != null) plays = true;
             if (!plays) resting.add(t);
         }
+        // Who plays first goes first; at the same time, the leagues' order; those with no game soon, after them.
+        resting.sort((x, y) -> {
+            Sports.Game nx = Sports.upcoming(x), ny = Sports.upcoming(y);
+            return Long.compare(nx == null ? Long.MAX_VALUE : nx.start, ny == null ? Long.MAX_VALUE : ny.start);
+        });
         int count = Math.min(games.size(), 12) + resting.size();
         String[] ids = new String[count], paths = new String[count], leagues = new String[count], casts = new String[count];
         this.ids = ids;
