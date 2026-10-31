@@ -229,7 +229,6 @@ public class HomeActivity extends Activity {
         glp.topMargin = dp(34);
         page.addView(greeting, glp);
         tagline = text(16, TEXT_DIM, regular);
-        tagline.setText("Relájate  ·  Mira  ·  Explora");
         tagline.setGravity(Gravity.CENTER);
         tagline.setLetterSpacing(0.06f);
         tagline.setShadowLayer(dp(8), 0, dp(1), 0x80000000);
@@ -707,7 +706,7 @@ public class HomeActivity extends Activity {
         String owner = Profile.userName(this);
         String hello = owner.isEmpty() ? part : part + ", " + owner;
         if (festive != null) hello += SeasonView.suffix(seasonView.season());   // "¡Viva México, Sergio!"
-        String line = "Relájate  ·  Mira  ·  Explora";
+        String line = "";
         String abbr = Sports.teamAbbr(this), team = Sports.teamShort(this);
         // On game day the hero takes this place (GameDay); after a loss or a tie Home looks as usual.
         // Within three days its chip in the "Hoy" row already says it.
@@ -717,6 +716,8 @@ public class HomeActivity extends Activity {
         }
         greeting.setText(hello);
         tagline.setText(line);
+        // Only when it has something to say (a game more than three days away); game day has its own block.
+        tagline.setVisibility(line.isEmpty() || hero.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
     }
 
     // ---------------------------------------------------------------- sports mode
