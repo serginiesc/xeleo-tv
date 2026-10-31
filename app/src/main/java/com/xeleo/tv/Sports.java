@@ -379,6 +379,8 @@ final class Sports {
                 }
             }
             focusLeague = follow == null ? "" : follow.league;
+            // Every team's next game, for its chip in the row (cached for an hour, so this is cheap).
+            for (MyTeam t : teams) nextGame(t.league, t.id);
             // Your teams' games first (the followed one at the very front), then live, upcoming and finished.
             final Game myGame = mine;
             all.sort((a, b) -> {
@@ -479,6 +481,14 @@ final class Sports {
     /** 0 live, 1 still to come, 2 finished: the order games are shown and followed in. */
     private static int rank(Game g) {
         return g.live() ? 0 : g.done() ? 2 : 1;
+    }
+
+    /** A team's next game if it comes in the next few days (GameDay.PREVIEW_DAYS) and is known already; else null. */
+    static Game upcoming(MyTeam t) {
+        Game g = NEXT.get(t.league + ":" + t.id);
+        if (g == null || g.side(t.abbr) == null) return null;
+        int days = GameDay.daysUntil(g.start);
+        return days >= 1 && days <= GameDay.PREVIEW_DAYS ? g : null;
     }
 
     /** A team's next game (or the one on now) from its schedule, cached for an hour per team. */

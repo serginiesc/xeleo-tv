@@ -106,18 +106,26 @@ final class SportsStripView extends HorizontalScrollView {
 
     void show(List<Sports.Game> games, List<Sports.MyTeam> teams) {
         StringBuilder key = new StringBuilder();
-        for (Sports.MyTeam t : teams) key.append('|').append(t.league).append(t.id);
+        boolean anyUpcoming = false;
+        for (Sports.MyTeam t : teams) {
+            key.append('|').append(t.league).append(t.id);
+            Sports.Game n = Sports.upcoming(t);
+            if (n != null) {
+                anyUpcoming = true;
+                key.append('>').append(n.id).append(n.start).append(n.broadcast);
+            }
+        }
         for (Sports.Game g : games) {
             key.append('|').append(g.id).append(g.state).append(g.detail).append(g.home.score).append('-').append(g.away.score);
         }
         if (key.toString().equals(shown) && row.getChildCount() > 0) {
-            setVisibility(games.isEmpty() ? GONE : VISIBLE);
+            setVisibility(games.isEmpty() && !anyUpcoming ? GONE : VISIBLE);
             return;
         }
         shown = key.toString();
         row.removeAllViews();
         ids = null;
-        if (games.isEmpty()) {
+        if (games.isEmpty() && !anyUpcoming) {
             setVisibility(GONE);
             return;
         }
@@ -147,6 +155,19 @@ final class SportsStripView extends HorizontalScrollView {
         this.casts = casts;
         int k = 0;
         for (Sports.MyTeam t : resting) {
+            // Its next game from three days before; further away, its last game and standings.
+            Sports.Game n = Sports.upcoming(t);
+            if (n != null) {
+                ids[k] = n.id;
+                paths[k] = n.path;
+                leagues[k] = t.league;
+                casts[k] = TextUtils.join(", ", n.channels);
+                int at = k++;
+                View chip = chip(n, true, frame(t));
+                chip.setOnClickListener(v -> GameActivity.open(getContext(), ids, paths, leagues, casts, at));
+                row.addView(chip);
+                continue;
+            }
             ids[k] = "";
             paths[k] = "";
             leagues[k] = t.league;

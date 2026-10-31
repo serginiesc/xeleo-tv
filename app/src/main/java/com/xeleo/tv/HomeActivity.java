@@ -710,7 +710,9 @@ public class HomeActivity extends Activity {
         String line = "Relájate  ·  Mira  ·  Explora";
         String abbr = Sports.teamAbbr(this), team = Sports.teamShort(this);
         // On game day the hero takes this place (GameDay); after a loss or a tie Home looks as usual.
-        if (myGame == null && nextGame != null && nextGame.side(abbr) != null) {
+        // Within three days its chip in the "Hoy" row already says it.
+        if (myGame == null && nextGame != null && nextGame.side(abbr) != null
+                && GameDay.daysUntil(nextGame.start) > GameDay.PREVIEW_DAYS) {
             line = "Próximo: " + team + " vs " + nextGame.other(abbr).shortName + "  ·  " + Sports.when(this, nextGame.start);
         }
         greeting.setText(hello);
