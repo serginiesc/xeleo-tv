@@ -176,6 +176,12 @@ final class Sports {
         return out;
     }
 
+    /** The league of your main team, which Home prefers when two of your teams play at once; empty: automatic. */
+    static String mainLeague(Context c) {
+        String league = prefs(c).getString("main", "");
+        return myTeam(c, league) == null ? "" : league;
+    }
+
     /** Your team in a league, or null. */
     static MyTeam myTeam(Context c, String league) {
         SharedPreferences p = prefs(c);
@@ -341,6 +347,7 @@ final class Sports {
         Set<String> teamLeagues = new HashSet<>();
         for (MyTeam t : teams) teamLeagues.add(t.league);
         setNation(myTeam(app, "selecciones"));
+        String main = mainLeague(app);
         new Thread(() -> {
             List<Game> all = new ArrayList<>();
             for (League l : LEAGUES) {
@@ -361,7 +368,7 @@ final class Sports {
                 for (Game g : all) {
                     if (!plays(g, t)) continue;
                     ours.add(g);
-                    if (mine == null || rank(g) < rank(mine) || (rank(g) == rank(mine) && g.start < mine.start)) {
+                    if (mine == null || better(g, t, mine, follow, main)) {
                         mine = g;
                         follow = t;
                     }
@@ -372,7 +379,8 @@ final class Sports {
             if (next == null) {
                 for (MyTeam t : teams) {
                     Game n = nextGame(t.league, t.id);
-                    if (n != null && (next == null || n.start < next.start)) {
+                    if (n != null && (next == null || n.start < next.start
+                            || (n.start == next.start && t.league.equals(main)))) {
                         next = n;
                         follow = t;
                     }
@@ -476,6 +484,18 @@ final class Sports {
             FETCHED.put(key, now);
         }
         return games;
+    }
+
+    /**
+     * Whether Home should follow g (of team t) rather than the current pick: live first, then the next to start. Your
+     * main team wins when both are live or they start at the same time; a game of its that starts later doesn't.
+     */
+    private static boolean better(Game g, MyTeam t, Game mine, MyTeam follow, String main) {
+        int r = rank(g), rm = rank(mine);
+        if (r != rm) return r < rm;
+        boolean isMain = t.league.equals(main), wasMain = follow.league.equals(main);
+        if (isMain != wasMain && (r == 0 || g.start == mine.start)) return isMain;
+        return g.start < mine.start;
     }
 
     /** 0 live, 1 still to come, 2 finished: the order games are shown and followed in. */

@@ -127,6 +127,27 @@ public class SportsSettingsActivity extends Activity {
             none.setPadding(dp(2), 0, 0, dp(10));
             card.addView(none);
         }
+        // With two or more teams: which one Home prefers when they play at once. OK goes through them.
+        List<Sports.MyTeam> mine = Sports.myTeams(this);
+        if (mine.size() > 1) {
+            String main = Sports.mainLeague(this);
+            String label = "Automático";
+            String nextMain = mine.get(0).league;
+            for (int i = 0; i < mine.size(); i++) {
+                if (!mine.get(i).league.equals(main)) continue;
+                label = mine.get(i).name;
+                nextMain = i + 1 < mine.size() ? mine.get(i + 1).league : "";
+            }
+            String chosenMain = nextMain;
+            row("Equipo principal", label, v -> {
+                Sports.set(this, "main", chosenMain);
+                refresh(0);
+            });
+            TextView mainNote = text(11, TEXT_DIM, regular);
+            mainNote.setText("Si dos de tus equipos juegan a la vez, el inicio sigue a este. Automático: al que empezó primero.");
+            mainNote.setPadding(dp(2), 0, 0, dp(10));
+            card.addView(mainNote);
+        }
         row("Foto del partido en el inicio", GameDay.photoOn(this) ? "Encendida" : "Apagada", v -> {
             Sports.set(this, "photo", !GameDay.photoOn(this));
             refresh(0);
