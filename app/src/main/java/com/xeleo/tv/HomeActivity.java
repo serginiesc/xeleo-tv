@@ -781,6 +781,12 @@ public class HomeActivity extends Activity {
                 alt = win.alt;
             }
         }
+        // Up to three days before your team's game, a soft preview; a season's theme goes first until the day itself.
+        if (m == GameDay.Moment.NONE && mine == null && preview == null && next != null && Sports.enabled(this)
+                && GameDay.moment(next, abbr) == GameDay.Moment.PREVIEW && SeasonView.today(this) == SeasonView.Season.NONE) {
+            game = next;
+            m = GameDay.Moment.PREVIEW;
+        }
         // The preview's win gets its confetti too, once each time it is asked for.
         if (m == GameDay.Moment.WON && preview != null && !previewCelebrated) confetti.burst(color, alt);
         previewCelebrated = m == GameDay.Moment.WON && preview != null;
@@ -801,15 +807,14 @@ public class HomeActivity extends Activity {
         hero.setVisibility(on ? View.VISIBLE : View.GONE);
         greeting.setVisibility(on ? View.GONE : View.VISIBLE);
         tagline.setVisibility(on ? View.GONE : View.VISIBLE);
-        sports.setDark(on);   // darker chips read over the photo (it may rebuild the row, so before hiding it)
         // The other games stay in sight in every moment, under your team's block.
         backdrop.setVisibility(on ? View.VISIBLE : View.GONE);
         ringColor = on ? color : Color.WHITE;
         if (!on) return;
-        boolean morning = m == GameDay.Moment.MORNING;
+        boolean days = m == GameDay.Moment.PREVIEW, morning = m == GameDay.Moment.MORNING;
         boolean photo = GameDay.photoOn(this) && !(preview != null && GameDay.previewNoPhoto);
         // The morning only hints at it; the full photo comes with the countdown, three hours before.
-        backdrop.set(color, morning ? 0.45f : 1f, photo ? (morning ? 0.25f : 1f) : 0f);
+        backdrop.set(color, days ? 0.3f : morning ? 0.45f : 1f, photo ? (days ? 0.15f : morning ? 0.25f : 1f) : 0f);
         hero.show(m, game, abbr, shortName, logo);
         Sports.Game shown = game;
         String gameLeague = league;

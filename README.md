@@ -79,6 +79,7 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
   la Leagues Cup. El inicio sigue al que juega
   más pronto; los demás días dice cuál es tu próximo partido. En la fila Hoy, cada equipo tuyo que no juega
   trae su botón con su último partido y su tabla.
+- **Previa:** hasta 3 días antes del partido de tu equipo, el inicio lo anuncia en sus colores y con su foto muy suave ("El domingo juegan los Chiefs · faltan 2 días"). Si ese día hay un tema de temporada, va primero el tema.
 - **Día de partido:** el inicio se pinta con los colores de tu equipo y, a la derecha, pone la foto de la
   crónica de su último triunfo en ESPN (siempre del partido: una jugada, un gol, un festejo; cambia con cada
   victoria); si no hay ninguna, en la NFL un póster del QB titular en

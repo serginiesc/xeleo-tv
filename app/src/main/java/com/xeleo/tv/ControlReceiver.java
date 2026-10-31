@@ -20,7 +20,7 @@ import android.content.Intent;
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SEASON_PREVIEW --es season halloween
  * (a season's theme on Home now: halloween or muertos; off goes back to the date's)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.GAMEDAY_PREVIEW --es moment live
- * (game day on Home with your team: morning, soon, live or won; off goes back to the real one; --ez photo false
+ * (game day on Home with your team: days, morning, soon, live or won; off goes back to the real one; --ez photo false
  * shows only the colours, --ez poster true the poster instead of the news photo, --es league ligamx your team
  * of that league)
  */

@@ -82,6 +82,7 @@ The app itself is in Spanish; screen names below are given as they appear on the
   Champions Cup and Leagues Cup. Home follows the one
   that plays soonest; on other days it says when your next game is. In the Hoy row, each of your teams that
   isn't playing gets a button with its last game and its standings.
+- **Preview:** up to 3 days before your team's game, Home announces it in the team's colors with a very soft photo ("El domingo juegan los Chiefs · faltan 2 días"). If a season theme is on that day, the theme goes first.
 - **Game day:** Home takes on your team's colors and, on the right, shows the photo from ESPN's recap of its latest
   win (always from the game: a run, a goal, a celebration; it changes with each win); with none, an NFL team gets a poster of its starting QB in the
   team's colors with his number behind him, and other leagues a stadium drawn in the team's colors (lit up at

@@ -42,10 +42,25 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 final class GameDay {
 
-    enum Moment { NONE, MORNING, SOON, LIVE, WON }
+    enum Moment { NONE, PREVIEW, MORNING, SOON, LIVE, WON }
 
     /** From this long before kickoff the countdown and the full photo show. */
     static final long SOON_MS = 3 * 3_600_000L;
+    /** Home starts talking about the game this many days before it. */
+    static final int PREVIEW_DAYS = 3;
+
+    /** Calendar days from today to that moment: 0 today, 1 tomorrow. */
+    static int daysUntil(long when) {
+        Calendar a = Calendar.getInstance(), b = Calendar.getInstance();
+        b.setTimeInMillis(when);
+        for (Calendar c : new Calendar[]{a, b}) {
+            c.set(Calendar.HOUR_OF_DAY, 12);
+            c.set(Calendar.MINUTE, 0);
+            c.set(Calendar.SECOND, 0);
+            c.set(Calendar.MILLISECOND, 0);
+        }
+        return Math.round((b.getTimeInMillis() - a.getTimeInMillis()) / 86_400_000f);
+    }
 
     private GameDay() {}
 
@@ -53,6 +68,9 @@ final class GameDay {
         if (g == null || g.side(abbr) == null) return Moment.NONE;
         if (g.live()) return Moment.LIVE;
         if (g.done()) return g.side(abbr).winner ? Moment.WON : Moment.NONE;
+        int days = daysUntil(g.start);
+        if (days > PREVIEW_DAYS) return Moment.NONE;
+        if (days > 0) return Moment.PREVIEW;
         return g.start - System.currentTimeMillis() > SOON_MS ? Moment.MORNING : Moment.SOON;
     }
 
@@ -158,6 +176,9 @@ final class GameDay {
         g.broadcast = next != null ? next.broadcast : "";
         long now = System.currentTimeMillis();
         switch (moment) {
+            case "days":
+                g.start = now + 2 * 86_400_000L;
+                break;
             case "morning":
                 g.start = now + 8 * 3_600_000L;
                 break;
@@ -783,18 +804,23 @@ final class GameDay {
             String when = Sports.when(getContext(), g.start) + (g.broadcast.isEmpty() ? "" : "  ·  " + g.broadcast);
             boolean nation = Sports.isNation(teamShort);
             switch (m) {
+                case PREVIEW:
                 case MORNING: {
                     LinearLayout row = row();
                     row.addView(logo(logo, 42));
                     TextView t = text(24, 0xFFFFFFFF, medium);
-                    t.setText((nation ? "Hoy juega " : "Hoy juegan ") + withArticle(teamShort));
+                    int days = m == Moment.PREVIEW ? daysUntil(g.start) : 0;
+                    String day = days == 0 ? "Hoy" : days == 1 ? "Mañana"
+                            : "El " + new SimpleDateFormat("EEEE", new Locale("es", "MX")).format(new java.util.Date(g.start));
+                    t.setText(day + (nation ? " juega " : " juegan ") + withArticle(teamShort));
                     t.setPadding(dp(12), 0, 0, 0);
                     row.addView(t);
                     addView(row);
                     TextView line = text(14, 0xE6FFFFFF, regular);
                     // A small countdown, whole hours only ("faltan 9 h"); the big one comes three hours before.
                     long left = (g.start - System.currentTimeMillis()) / 60_000;
-                    String cd = left <= 0 ? "" : left >= 60 ? "faltan " + left / 60 + " h" : "faltan " + left + " min";
+                    String cd = days > 1 ? "faltan " + days + " días" : days == 1 ? ""
+                            : left <= 0 ? "" : left >= 60 ? "faltan " + left / 60 + " h" : "faltan " + left + " min";
                     line.setText("vs " + them.shortName + "  ·  " + when + (cd.isEmpty() ? "" : "  ·  " + cd));
                     line.setPadding(dp(54), dp(4), 0, 0);
                     addView(line);
