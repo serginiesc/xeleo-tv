@@ -60,6 +60,8 @@ dos con Android 14; debería funcionar en otros aparatos con Google TV o Android
 - **Menú rápido** al estilo Google TV (el botón de ajustes del control, o Ajustes en el inicio): protector de
   pantalla, Wi‑Fi, imagen, Bluetooth, sonido, accesibilidad, **temporizador para dormir** (15/30/60/90 min), apps,
   Deportes, En vivo, Personalizar y **Reiniciar**.
+- **Entradas:** en una tele con Android integrado (como una TCL), el menú rápido trae sus entradas (HDMI 1, HDMI 2…)
+  en lugar de Apps. No se ha probado en una tele así.
 - **Notificaciones** (la campana del menú rápido, con cuántas hay; Ajustes en el inicio lleva un punto): sin el
   launcher de Google TV no hay otro lugar para verlas, y algunas cosas solo se ofrecen ahí, como la actualización
   del control. OK la abre, mantener OK la borra.

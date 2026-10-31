@@ -91,7 +91,13 @@ public class QuickSettingsActivity extends Activity {
         addTile(tiles, R.drawable.ic_accessibility, "Accesibilidad", null, new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
         View timer = addTile(tiles, R.drawable.ic_timer, "Temporizador", timerLabel(), null);
         timer.setOnClickListener(v -> cycleSleepTimer(v));
-        addTile(tiles, R.drawable.ic_apps, "Apps", null, new Intent(Settings.ACTION_APPLICATION_SETTINGS));
+        // A TV with inputs (HDMI…) gets them in this place; its apps' settings are still under the gear.
+        java.util.List<TvInputs.Input> inputs = TvInputs.list(this);
+        if (inputs.isEmpty()) {
+            addTile(tiles, R.drawable.ic_apps, "Apps", null, new Intent(Settings.ACTION_APPLICATION_SETTINGS));
+        } else {
+            addTile(tiles, R.drawable.ic_input, "Entradas", null, null).setOnClickListener(v -> showInputs(inputs));
+        }
         addTile(tiles, R.drawable.ic_sports, "Deportes", !Sports.enabled(this) ? "Apagado"
                 : Sports.teamsLabel(this).isEmpty() ? "Encendido" : Sports.teamsLabel(this), new Intent(this, SportsSettingsActivity.class));
         View live = addTile(tiles, R.drawable.ic_live, "En vivo", Live.enabled(this) ? "Encendido" : "Apagado", null);
@@ -288,6 +294,55 @@ public class QuickSettingsActivity extends Activity {
         lp.setMargins(col == 0 ? 0 : dp(3), 0, col == 0 ? dp(3) : 0, dp(5));
         grid.addView(tile, lp);
         return tile;
+    }
+
+    /** The list of the TV's inputs; OK goes to one. */
+    private void showInputs(java.util.List<TvInputs.Input> inputs) {
+        android.app.Dialog d = new android.app.Dialog(this);
+        d.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(16), dp(16), dp(16), dp(10));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(PANEL);
+        bg.setCornerRadius(dp(18));
+        list.setBackground(bg);
+        TextView title = text(16, Color.WHITE, medium);
+        title.setText("Entradas");
+        list.addView(title);
+        View first = null;
+        for (TvInputs.Input in : inputs) {
+            TextView row = text(14, TEXT, medium);
+            row.setText(in.label);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(14), 0, dp(14), 0);
+            row.setFocusable(true);
+            row.setClickable(true);
+            styleInput(row, false);
+            row.setOnFocusChangeListener((v, f) -> styleInput((TextView) v, f));
+            row.setOnClickListener(v -> {
+                if (in.open == null) return;   // the sample list
+                d.dismiss();
+                open(in.open);
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(40));
+            lp.topMargin = dp(8);
+            list.addView(row, lp);
+            if (first == null) first = row;
+        }
+        d.setContentView(list, new android.view.ViewGroup.LayoutParams(dp(260), -2));
+        if (d.getWindow() != null) d.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        d.show();
+        View focus = first;
+        focus.post(focus::requestFocus);
+    }
+
+    private void styleInput(TextView row, boolean focused) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(12));
+        bg.setColor(focused ? TILE_FOCUS : TILE);
+        row.setBackground(bg);
+        row.setTextColor(focused ? DARK : TEXT);
     }
 
     private static final int[] TIMER_STEPS = {0, 15, 30, 60, 90};

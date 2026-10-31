@@ -15,6 +15,8 @@ import android.content.Intent;
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.REMINDER_TEST   (a reminder card in a few seconds)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.OPEN_NOTIFICATION --es pkg com.google.android.tv.dfuservice
  * (opens that app's notification, as tapping it would: here the remote's firmware update)
+ *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.INPUTS_PREVIEW --ez on true
+ * (a sample Entradas list in quick settings, to see it on a box without inputs)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.LIGHT_MODE --es mode on
  * (light mode for small boxes: on, off or auto; it takes effect the next time XELEO starts)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SEASON_PREVIEW --es season halloween
@@ -61,6 +63,9 @@ public class ControlReceiver extends BroadcastReceiver {
         } else if ("com.xeleo.tv.OPEN_NOTIFICATION".equals(action)) {
             String pkg = intent.getStringExtra("pkg");
             setResultData(pkg != null && MediaListener.openApp(context, pkg) ? "opened" : "no notification from " + pkg);
+        } else if ("com.xeleo.tv.INPUTS_PREVIEW".equals(action)) {
+            TvInputs.preview = intent.getBooleanExtra("on", false);
+            setResultData("inputs preview " + TvInputs.preview);
         } else if ("com.xeleo.tv.LIGHT_MODE".equals(action)) {
             String m = intent.getStringExtra("mode");
             if (m == null || !(m.equals("on") || m.equals("off"))) m = "auto";
