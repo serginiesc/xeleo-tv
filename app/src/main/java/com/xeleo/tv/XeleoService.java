@@ -99,12 +99,16 @@ public class XeleoService extends AccessibilityService {
         return super.onUnbind(intent);
     }
 
+    /** The settings button on a TCL remote (RC902V): a key of TCL's own, which its system ignores without its launcher. */
+    private static final int TCL_SETTINGS = 4077;
+
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
-        // The remote's Settings key: the onn's gear sends KEYCODE_NOTIFICATION, others KEYCODE_SETTINGS. Taken here,
+        // The remote's Settings key: the onn's gear sends KEYCODE_NOTIFICATION, a TCL's its own 4077, others
+        // KEYCODE_SETTINGS. Taken here,
         // so Google TV's own panel (which the onn would open, and which isn't there without its launcher) doesn't.
         int key = event.getKeyCode();
-        if (key == KeyEvent.KEYCODE_SETTINGS || key == KeyEvent.KEYCODE_NOTIFICATION) {
+        if (key == KeyEvent.KEYCODE_SETTINGS || key == KeyEvent.KEYCODE_NOTIFICATION || key == TCL_SETTINGS) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) HomeActivity.openQuickSettings(this);
             return true;
         }
