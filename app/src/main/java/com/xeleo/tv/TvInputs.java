@@ -53,6 +53,11 @@ final class TvInputs {
         } catch (RuntimeException ignored) {
             // A TV that doesn't answer: as if it had none.
         }
+        // HDMI 1, 2, 3 and then the rest: Android lists them in no particular order.
+        out.sort((a, b) -> {
+            boolean ha = a.label.toUpperCase().startsWith("HDMI"), hb = b.label.toUpperCase().startsWith("HDMI");
+            return ha != hb ? (ha ? -1 : 1) : a.label.compareToIgnoreCase(b.label);
+        });
         return out;
     }
 }
