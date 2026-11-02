@@ -64,7 +64,9 @@ The app itself is in Spanish; screen names below are given as they appear on the
   Wi‑Fi, picture, Bluetooth, sound, accessibility, **sleep timer** (15/30/60/90 min), apps, Deportes (Sports),
   En vivo, Personalizar (Customize) and **Reiniciar (Restart)**.
 - **Entradas (Inputs):** on a TV with Android built in (such as a TCL), the quick menu has its inputs (HDMI 1,
-  HDMI 2…) in place of Apps. Tested on a TCL with Android 12.
+  HDMI 2…) in place of Apps. Tested on a TCL with Android 12. When something is connected it switches to that input
+  from Home or another input, and inside an app it only shows a notice; it can be turned off in Personalizar. That
+  last part hasn't been tested with a real device yet.
 - **Notifications** (the bell in the quick menu, with how many there are; Ajustes on Home gets a dot): without
   Google TV's launcher there is no other place to see them, and some things are only offered there, such as the
   remote's firmware update. OK opens one, holding OK dismisses it.

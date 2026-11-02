@@ -69,6 +69,19 @@ public class ProfileActivity extends Activity {
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, dp(40));
         slp.topMargin = dp(14);
         card.addView(season, slp);
+        // Only on a TV with inputs: go to the one where something was just connected (InputWatcher).
+        if (!TvInputs.list(this).isEmpty()) {
+            TextView auto = button(autoLabel(), null);
+            auto.setGravity(Gravity.CENTER_VERTICAL);
+            auto.setPadding(dp(14), 0, dp(14), 0);
+            auto.setOnClickListener(v -> {
+                InputWatcher.setEnabled(this, !InputWatcher.enabled(this));
+                auto.setText(autoLabel());
+            });
+            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(-1, dp(40));
+            alp.topMargin = dp(8);
+            card.addView(auto, alp);
+        }
         status = text(12, TEXT_DIM, regular);
         status.setPadding(dp(2), dp(8), 0, 0);
         card.addView(status);
@@ -96,6 +109,10 @@ public class ProfileActivity extends Activity {
 
     private TextView status;
     private boolean searching;
+
+    private String autoLabel() {
+        return "Cambiar de entrada al conectar algo:  " + (InputWatcher.enabled(this) ? "Encendido" : "Apagado");
+    }
 
     private String seasonLabel() {
         return "Temas de temporada (Navidad, 15 de septiembre…):  " + (SeasonView.enabled(this) ? "Encendidos" : "Apagados");

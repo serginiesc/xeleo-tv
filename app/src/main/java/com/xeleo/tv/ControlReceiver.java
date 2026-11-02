@@ -17,6 +17,8 @@ import android.content.Intent;
  * (opens that app's notification, as tapping it would: here the remote's firmware update)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.INPUTS_PREVIEW --ez on true
  * (a sample Entradas list in quick settings, to see it on a box without inputs)
+ *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.INPUT_TEST
+ * (the card for an input that was just connected)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.LIGHT_MODE --es mode on
  * (light mode for small boxes: on, off or auto; it takes effect the next time XELEO starts)
  *   am broadcast -n com.xeleo.tv/.ControlReceiver -a com.xeleo.tv.SEASON_PREVIEW --es season halloween
@@ -63,6 +65,8 @@ public class ControlReceiver extends BroadcastReceiver {
         } else if ("com.xeleo.tv.OPEN_NOTIFICATION".equals(action)) {
             String pkg = intent.getStringExtra("pkg");
             setResultData(pkg != null && MediaListener.openApp(context, pkg) ? "opened" : "no notification from " + pkg);
+        } else if ("com.xeleo.tv.INPUT_TEST".equals(action)) {
+            setResultData(XeleoService.testInputCard() ? "input card shown" : "XeleoService is not running");
         } else if ("com.xeleo.tv.INPUTS_PREVIEW".equals(action)) {
             TvInputs.preview = intent.getBooleanExtra("on", false);
             setResultData("inputs preview " + TvInputs.preview);

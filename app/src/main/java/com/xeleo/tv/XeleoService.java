@@ -27,12 +27,25 @@ public class XeleoService extends AccessibilityService {
 
     private static XeleoService running;
     private GameAlerts alerts;
+    private InputWatcher inputs;
     /** The app on screen now, from window changes; Home skips game alerts (it shows the game itself). */
     private volatile String foreground = "";
 
     static boolean homeOnScreen() {
         XeleoService s = running;
         return s != null && s.getPackageName().equals(s.foreground);
+    }
+
+    String foregroundPackage() {
+        return foreground;
+    }
+
+    /** ControlReceiver INPUT_TEST: the card for an input that was just connected, to see how it looks. */
+    static boolean testInputCard() {
+        XeleoService s = running;
+        if (s == null || s.inputs == null) return false;
+        s.inputs.showCard("HDMI 2");
+        return true;
     }
 
     /** ControlReceiver SPORTS_TEST: a sample alert card, to see how it looks. */
@@ -87,6 +100,8 @@ public class XeleoService extends AccessibilityService {
         running = this;
         Sports.init(this);
         alerts = new GameAlerts(this);
+        inputs = new InputWatcher(this);
+        inputs.start();
     }
 
     @Override
@@ -95,6 +110,8 @@ public class XeleoService extends AccessibilityService {
         sleepAt = 0;
         if (alerts != null) alerts.stop();
         alerts = null;
+        if (inputs != null) inputs.stop();
+        inputs = null;
         running = null;
         return super.onUnbind(intent);
     }

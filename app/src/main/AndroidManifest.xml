@@ -17,6 +17,11 @@
 
     <!-- Android 11+ package visibility: the TV apps shown as cards. -->
     <queries>
+        <!-- The TV's own app for its inputs, to know when it is on screen (InputWatcher). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" android:host="android.media.tv" android:mimeType="vnd.android.cursor.item/channel" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
