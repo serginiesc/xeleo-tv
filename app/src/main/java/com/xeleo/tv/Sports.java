@@ -494,6 +494,13 @@ final class Sports {
         int r = rank(g), rm = rank(mine);
         if (r != rm) return r < rm;
         boolean isMain = t.league.equals(main), wasMain = follow.league.equals(main);
+        if (r == 2) {   // both finished: a win over a loss (a loss shows nothing), then your main team, then the latest
+            Team me = g.side(t.abbr), was = mine.side(follow.abbr);
+            boolean won = me != null && me.winner, wasWon = was != null && was.winner;
+            if (won != wasWon) return won;
+            if (isMain != wasMain) return isMain;
+            return g.start > mine.start;
+        }
         if (isMain != wasMain && (r == 0 || g.start == mine.start)) return isMain;
         return g.start < mine.start;
     }

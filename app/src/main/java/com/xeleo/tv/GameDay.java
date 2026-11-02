@@ -889,8 +889,8 @@ final class GameDay {
                     top.addView(state);
                     addView(top);
                     LinearLayout score = row();
-                    score.addView(side(me, logo, 64));
-                    TextView mine = text(72, 0xFFFFFFFF, medium);
+                    score.addView(side(me, logo, 56));
+                    TextView mine = text(62, 0xFFFFFFFF, medium);
                     mine.setText(me.score);
                     mine.setFontVariationSettings("'wght' 700");
                     mine.setShadowLayer(dp(10), 0, dp(2), 0x80000000);
@@ -900,19 +900,19 @@ final class GameDay {
                     dash.setText("–");
                     dash.setPadding(dp(18), 0, dp(18), 0);
                     score.addView(dash);
-                    TextView theirs = text(72, 0xD9FFFFFF, light);
+                    TextView theirs = text(62, 0xD9FFFFFF, light);
                     theirs.setText(them.score);
                     theirs.setShadowLayer(dp(10), 0, dp(2), 0x80000000);
                     theirs.setPadding(0, 0, dp(18), 0);
                     score.addView(theirs);
-                    score.addView(side(them, them.logo, 58));
+                    score.addView(side(them, them.logo, 50));
                     LayoutParams slp = new LayoutParams(-2, -2);
-                    slp.topMargin = dp(10);
+                    slp.topMargin = dp(4);
                     addView(score, slp);
                     note = text(13, 0xCCFFFFFF, regular);
                     note.setText(live ? (g.broadcast.isEmpty() ? "" : g.broadcast + "  ·  ") + "OK: panel del partido"
                             : "OK: panel del partido");
-                    note.setPadding(0, dp(10), 0, 0);
+                    note.setPadding(0, dp(6), 0, 0);
                     addView(note);
                 }
             }
