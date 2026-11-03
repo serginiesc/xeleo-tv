@@ -61,6 +61,14 @@
             android:windowSoftInputMode="adjustPan|stateHidden"
             android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
 
+        <!-- Personalizar > Botones del control: what the remote's app buttons open. -->
+        <activity
+            android:name=".ButtonsActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+
         <!-- The installer's answer when an update is handed to it (Updater). -->
         <receiver
             android:name=".Updater$Result"

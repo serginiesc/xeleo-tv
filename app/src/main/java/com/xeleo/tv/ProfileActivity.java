@@ -82,6 +82,13 @@ public class ProfileActivity extends Activity {
             alp.topMargin = dp(8);
             card.addView(auto, alp);
         }
+        TextView keys = button("Botones del control (Netflix, YouTube…)", v ->
+                startActivity(new android.content.Intent(this, ButtonsActivity.class)));
+        keys.setGravity(Gravity.CENTER_VERTICAL);
+        keys.setPadding(dp(14), 0, dp(14), 0);
+        LinearLayout.LayoutParams klp = new LinearLayout.LayoutParams(-1, dp(40));
+        klp.topMargin = dp(8);
+        card.addView(keys, klp);
         status = text(12, TEXT_DIM, regular);
         status.setPadding(dp(2), dp(8), 0, 0);
         card.addView(status);

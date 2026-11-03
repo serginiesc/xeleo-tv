@@ -17,7 +17,8 @@ import java.util.Map;
  *   through; the onn keeps it);
  * - the system power menu (restart, power off) for the panel's Reiniciar tile;
  * - the sleep timer, which puts the TV to sleep with GLOBAL_ACTION_LOCK_SCREEN;
- * - the recent apps on Home: every app that comes to the screen, however it was opened.
+ * - the recent apps on Home: every app that comes to the screen, however it was opened;
+ * - the remote's app buttons the person assigned (RemoteKeys), and held volume on a TV (volume()).
  *
  * Enable over adb:
  *   settings put secure enabled_accessibility_services com.xeleo.tv/.XeleoService
@@ -102,6 +103,7 @@ public class XeleoService extends AccessibilityService {
         alerts = new GameAlerts(this);
         inputs = new InputWatcher(this);
         inputs.start();
+        tvPanel = !TvInputs.list(this).isEmpty();
     }
 
     @Override
@@ -116,6 +118,42 @@ public class XeleoService extends AccessibilityService {
         return super.onUnbind(intent);
     }
 
+    /**
+     * A TV with its own speakers (it has inputs, like a TCL). There, holding volume only moved one step: the keys pass
+     * through this service, and the TV's held-key repeats don't make it back. So the first press passes through as
+     * usual, and while the key stays down the steps come from here.
+     */
+    private boolean tvPanel;
+    private int volumeDir;
+    private int volumeSteps;
+    private final Runnable volumeStep = new Runnable() {
+        @Override
+        public void run() {
+            if (volumeDir == 0 || ++volumeSteps > 100) return;
+            android.media.AudioManager audio = getSystemService(android.media.AudioManager.class);
+            if (audio != null) {
+                audio.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, volumeDir,
+                        android.media.AudioManager.FLAG_SHOW_UI);
+            }
+            handler.postDelayed(this, 110);
+        }
+    };
+
+    private boolean volume(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (event.getRepeatCount() > 0) return true;   // the steps already come from volumeStep
+            handler.removeCallbacks(volumeStep);
+            volumeDir = event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP
+                    ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER;
+            volumeSteps = 0;
+            handler.postDelayed(volumeStep, 450);
+            return false;
+        }
+        volumeDir = 0;
+        handler.removeCallbacks(volumeStep);
+        return false;
+    }
+
     /** The settings button on a TCL remote (RC902V): a key of TCL's own, which its system ignores without its launcher. */
     private static final int TCL_SETTINGS = 4077;
 
@@ -125,6 +163,21 @@ public class XeleoService extends AccessibilityService {
         // KEYCODE_SETTINGS. Taken here,
         // so Google TV's own panel (which the onn would open, and which isn't there without its launcher) doesn't.
         int key = event.getKeyCode();
+        boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
+        // Personalizar > Botones del control waiting for a button: it goes there, and does nothing else.
+        RemoteKeys.Listener learn = RemoteKeys.learning;
+        if (learn != null && !RemoteKeys.reserved(key)) {
+            if (!down && !event.isCanceled()) handler.post(() -> learn.pressed(key));
+            return true;
+        }
+        if (!RemoteKeys.reserved(key)) {
+            String app = RemoteKeys.app(this, key);
+            if (app != null) {
+                if (!down && !event.isCanceled()) RemoteKeys.open(this, app);
+                return true;
+            }
+        }
+        if (tvPanel && (key == KeyEvent.KEYCODE_VOLUME_UP || key == KeyEvent.KEYCODE_VOLUME_DOWN)) return volume(event);
         if (key == KeyEvent.KEYCODE_SETTINGS || key == KeyEvent.KEYCODE_NOTIFICATION || key == TCL_SETTINGS) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) HomeActivity.openQuickSettings(this);
             return true;
