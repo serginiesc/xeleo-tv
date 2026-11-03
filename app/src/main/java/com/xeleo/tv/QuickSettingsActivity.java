@@ -83,21 +83,28 @@ public class QuickSettingsActivity extends Activity {
 
         // Starts the screensaver now: Android TV Settings' "sleep" voice action (the onn has no Somnambulator).
         Intent dream = new Intent("com.google.android.pano.action.SLEEP");
-        View first = addTile(tiles, R.drawable.ic_moon, "Protector de pantalla", null, dream);
-        addTile(tiles, R.drawable.ic_wifi, "Wi‑Fi", wifiName(), new Intent(Settings.ACTION_WIFI_SETTINGS));
-        addTile(tiles, R.drawable.ic_picture, "Imagen", null, new Intent(Settings.ACTION_DISPLAY_SETTINGS));
-        addTile(tiles, R.drawable.ic_bluetooth, "Bluetooth", null, new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
-        addTile(tiles, R.drawable.ic_volume, "Salida de audio", "Sonido", new Intent(Settings.ACTION_SOUND_SETTINGS));
-        addTile(tiles, R.drawable.ic_accessibility, "Accesibilidad", null, new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        // A TV with inputs (HDMI…) gets them in Apps' place, and first: on a TV the inputs, the picture and the sound are what
+        // gets changed most, Wi‑Fi and Bluetooth hardly ever. Its apps' settings are still under the gear.
+        java.util.List<TvInputs.Input> inputs = TvInputs.list(this);
+        boolean tv = !inputs.isEmpty();
+        View first;
+        if (tv) {
+            first = addTile(tiles, R.drawable.ic_input, "Entradas", null, null);
+            first.setOnClickListener(v -> showInputs(inputs));
+            addTile(tiles, R.drawable.ic_picture, "Imagen", null, new Intent(Settings.ACTION_DISPLAY_SETTINGS));
+            addTile(tiles, R.drawable.ic_volume, "Salida de audio", "Sonido", new Intent(Settings.ACTION_SOUND_SETTINGS));
+            addTile(tiles, R.drawable.ic_moon, "Protector", null, dream);
+        } else {
+            first = addTile(tiles, R.drawable.ic_moon, "Protector", null, dream);
+            addTile(tiles, R.drawable.ic_wifi, "Wi‑Fi", wifiName(), new Intent(Settings.ACTION_WIFI_SETTINGS));
+            addTile(tiles, R.drawable.ic_picture, "Imagen", null, new Intent(Settings.ACTION_DISPLAY_SETTINGS));
+            addTile(tiles, R.drawable.ic_bluetooth, "Bluetooth", null, new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+            addTile(tiles, R.drawable.ic_volume, "Salida de audio", "Sonido", new Intent(Settings.ACTION_SOUND_SETTINGS));
+            addTile(tiles, R.drawable.ic_accessibility, "Accesibilidad", null, new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        }
         View timer = addTile(tiles, R.drawable.ic_timer, "Temporizador", timerLabel(), null);
         timer.setOnClickListener(v -> cycleSleepTimer(v));
-        // A TV with inputs (HDMI…) gets them in this place; its apps' settings are still under the gear.
-        java.util.List<TvInputs.Input> inputs = TvInputs.list(this);
-        if (inputs.isEmpty()) {
-            addTile(tiles, R.drawable.ic_apps, "Apps", null, new Intent(Settings.ACTION_APPLICATION_SETTINGS));
-        } else {
-            addTile(tiles, R.drawable.ic_input, "Entradas", null, null).setOnClickListener(v -> showInputs(inputs));
-        }
+        if (!tv) addTile(tiles, R.drawable.ic_apps, "Apps", null, new Intent(Settings.ACTION_APPLICATION_SETTINGS));
         addTile(tiles, R.drawable.ic_sports, "Deportes", !Sports.enabled(this) ? "Apagado"
                 : Sports.teamsLabel(this).isEmpty() ? "Encendido" : Sports.teamsLabel(this), new Intent(this, SportsSettingsActivity.class));
         View live = addTile(tiles, R.drawable.ic_live, "En vivo", Live.enabled(this) ? "Encendido" : "Apagado", null);
@@ -108,6 +115,11 @@ public class QuickSettingsActivity extends Activity {
             sub.setText(Live.enabled(this) ? "Encendido" : "Apagado");
         });
         addTile(tiles, R.drawable.ic_person, "Personalizar", Profile.tvName(this), new Intent(this, ProfileActivity.class));
+        if (tv) {
+            addTile(tiles, R.drawable.ic_wifi, "Wi‑Fi", wifiName(), new Intent(Settings.ACTION_WIFI_SETTINGS));
+            addTile(tiles, R.drawable.ic_bluetooth, "Bluetooth", null, new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+            addTile(tiles, R.drawable.ic_accessibility, "Accesibilidad", null, new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        }
         View restart = addTile(tiles, R.drawable.ic_power, "Reiniciar", "Apagar o reiniciar", null);
         restart.setOnClickListener(v -> {
             finish();
@@ -275,10 +287,11 @@ public class QuickSettingsActivity extends Activity {
         t.setSingleLine(true);
         t.setEllipsize(android.text.TextUtils.TruncateAt.END);
         labels.addView(t);
-        TextView s = text(8, TEXT_DIM, regular);
+        TextView s = text(9, TEXT_DIM, regular);
         s.setText(subtitle);
         s.setSingleLine(true);
-        s.setPadding(0, dp(3), 0, 0);
+        s.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        s.setPadding(0, dp(2), 0, 0);
         if (subtitle == null || subtitle.isEmpty()) s.setVisibility(View.GONE);
         labels.addView(s);
         tile.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -378,7 +391,7 @@ public class QuickSettingsActivity extends Activity {
         tile.setBackground(bg);
         icon.setColorFilter(focused ? DARK : TEXT);
         title.setTextColor(focused ? DARK : TEXT);
-        sub.setTextColor(focused ? 0xFF444746 : TEXT_DIM);
+        sub.setTextColor(focused ? 0xFF3C4043 : 0xFFD6D9D7);
     }
 
     private String wifiName() {
