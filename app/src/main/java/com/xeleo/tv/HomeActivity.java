@@ -215,13 +215,6 @@ public class HomeActivity extends Activity {
         barSpace = new View(this);
         page.addView(barSpace, new LinearLayout.LayoutParams(-1, dp(96)));
 
-        hero = new GameDay.Hero(this, regular, medium, light);
-        hero.setVisibility(View.GONE);
-        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(-2, -2);
-        hlp.leftMargin = dp(30);
-        hlp.topMargin = dp(4);
-        page.addView(hero, hlp);
-
         greeting = text(46, TEXT, medium);
         greeting.setGravity(Gravity.CENTER);
         greeting.setShadowLayer(dp(12), 0, dp(2), 0x80000000);
@@ -235,6 +228,14 @@ public class HomeActivity extends Activity {
         LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(-1, -2);
         tlp.topMargin = dp(8);
         page.addView(tagline, tlp);
+
+        // Under the greeting: the days before a game both show; on the day itself the hero takes its place.
+        hero = new GameDay.Hero(this, regular, medium, light);
+        hero.setVisibility(View.GONE);
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(-2, -2);
+        hlp.leftMargin = dp(30);
+        hlp.topMargin = dp(4);
+        page.addView(hero, hlp);
 
         sports = new SportsStripView(this, regular, medium);
         LinearLayout.LayoutParams sslp = new LinearLayout.LayoutParams(-1, -2);
@@ -719,7 +720,8 @@ public class HomeActivity extends Activity {
         // Only when it has something to say (a game more than three days away); game day has its own block.
         tagline.setVisibility(line.isEmpty() || hero.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
         // Without that line there is room to spare: the greeting and the row sit a little lower, centred in the gap.
-        int top = dp(line.isEmpty() ? 54 : 34);
+        // With the preview under it, the greeting goes up to leave the preview its room.
+        int top = dp(heroMoment == GameDay.Moment.PREVIEW ? 10 : line.isEmpty() ? 54 : 34);
         LinearLayout.LayoutParams glp = (LinearLayout.LayoutParams) greeting.getLayoutParams();
         if (glp.topMargin != top) {
             glp.topMargin = top;
@@ -815,8 +817,9 @@ public class HomeActivity extends Activity {
         boolean on = m != GameDay.Moment.NONE;
         if (on != was) updateScenery(false);   // the sky without its sun or moon on game day, and back
         hero.setVisibility(on ? View.VISIBLE : View.GONE);
-        greeting.setVisibility(on ? View.GONE : View.VISIBLE);
+        greeting.setVisibility(on && m != GameDay.Moment.PREVIEW ? View.GONE : View.VISIBLE);
         tagline.setVisibility(on ? View.GONE : View.VISIBLE);
+        updateGreeting();
         // The other games stay in sight in every moment, under your team's block.
         backdrop.setVisibility(on ? View.VISIBLE : View.GONE);
         ringColor = on ? color : Color.WHITE;
