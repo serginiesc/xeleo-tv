@@ -18,7 +18,7 @@ import java.util.Map;
  * - the system power menu (restart, power off) for the panel's Reiniciar tile;
  * - the sleep timer, which puts the TV to sleep with GLOBAL_ACTION_LOCK_SCREEN;
  * - the recent apps on Home: every app that comes to the screen, however it was opened;
- * - the remote's app buttons the person assigned (RemoteKeys), and held volume (volume()).
+ * - the remote's app buttons the person assigned (RemoteKeys).
  *
  * Enable over adb:
  *   settings put secure enabled_accessibility_services com.xeleo.tv/.XeleoService
@@ -117,41 +117,6 @@ public class XeleoService extends AccessibilityService {
         return super.onUnbind(intent);
     }
 
-    /**
-     * Holding volume only moved one step, on a TCL and on the onn alike: the keys pass through this service, and the
-     * held-key repeats don't make it back. So the first press passes through as usual, and while the key stays down
-     * the steps come from here, the way the system takes a volume key (on a box, that goes on to the TV over HDMI).
-     */
-    private int volumeDir;
-    private int volumeSteps;
-    private final Runnable volumeStep = new Runnable() {
-        @Override
-        public void run() {
-            if (volumeDir == 0 || ++volumeSteps > 100) return;
-            android.media.AudioManager audio = getSystemService(android.media.AudioManager.class);
-            if (audio != null) {
-                audio.adjustSuggestedStreamVolume(volumeDir, android.media.AudioManager.USE_DEFAULT_STREAM_TYPE,
-                        android.media.AudioManager.FLAG_SHOW_UI);
-            }
-            handler.postDelayed(this, 110);
-        }
-    };
-
-    private boolean volume(KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (event.getRepeatCount() > 0) return true;   // the steps already come from volumeStep
-            handler.removeCallbacks(volumeStep);
-            volumeDir = event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP
-                    ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER;
-            volumeSteps = 0;
-            handler.postDelayed(volumeStep, 450);
-            return false;
-        }
-        volumeDir = 0;
-        handler.removeCallbacks(volumeStep);
-        return false;
-    }
-
     /** The settings button on a TCL remote (RC902V): a key of TCL's own, which its system ignores without its launcher. */
     private static final int TCL_SETTINGS = 4077;
 
@@ -175,7 +140,6 @@ public class XeleoService extends AccessibilityService {
                 return true;
             }
         }
-        if (key == KeyEvent.KEYCODE_VOLUME_UP || key == KeyEvent.KEYCODE_VOLUME_DOWN) return volume(event);
         if (key == KeyEvent.KEYCODE_SETTINGS || key == KeyEvent.KEYCODE_NOTIFICATION || key == TCL_SETTINGS) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) HomeActivity.openQuickSettings(this);
             return true;
