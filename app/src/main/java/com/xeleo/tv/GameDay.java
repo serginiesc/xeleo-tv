@@ -389,15 +389,19 @@ final class GameDay {
                 long at = iso.parse(published.substring(0, 16)).getTime();
                 if (at < kickoff + 90 * 60_000L || at > kickoff + 36 * 3_600_000L) continue;   // after the game
                 boolean us = false, them = false;
+                int teams = 0;
                 JSONArray cats = a.optJSONArray("categories");
                 for (int k = 0; cats != null && k < cats.length(); k++) {
                     JSONObject c = cats.getJSONObject(k);
                     if (!"team".equals(c.optString("type"))) continue;
+                    teams++;
                     String id = c.optString("teamId");
                     if (id.equals(teamId)) us = true;
                     if (id.equals(rivalId)) them = true;
                 }
-                if (!us || !them) continue;
+                // Only about this game: a round-up of the whole league is tagged with every team, and its photo is
+                // of anyone (a Cruz Azul player behind a Santos win).
+                if (!us || !them || teams > 2) continue;
                 JSONArray images = a.optJSONArray("images");
                 for (int k = 0; images != null && k < images.length(); k++) {
                     JSONObject img = images.getJSONObject(k);

@@ -18,7 +18,7 @@ import java.util.Map;
  * - the system power menu (restart, power off) for the panel's Reiniciar tile;
  * - the sleep timer, which puts the TV to sleep with GLOBAL_ACTION_LOCK_SCREEN;
  * - the recent apps on Home: every app that comes to the screen, however it was opened;
- * - the remote's app buttons the person assigned (RemoteKeys), and held volume on a TV (volume()).
+ * - the remote's app buttons the person assigned (RemoteKeys), and held volume (volume()).
  *
  * Enable over adb:
  *   settings put secure enabled_accessibility_services com.xeleo.tv/.XeleoService
@@ -103,7 +103,6 @@ public class XeleoService extends AccessibilityService {
         alerts = new GameAlerts(this);
         inputs = new InputWatcher(this);
         inputs.start();
-        tvPanel = !TvInputs.list(this).isEmpty();
     }
 
     @Override
@@ -119,11 +118,10 @@ public class XeleoService extends AccessibilityService {
     }
 
     /**
-     * A TV with its own speakers (it has inputs, like a TCL). There, holding volume only moved one step: the keys pass
-     * through this service, and the TV's held-key repeats don't make it back. So the first press passes through as
-     * usual, and while the key stays down the steps come from here.
+     * Holding volume only moved one step, on a TCL and on the onn alike: the keys pass through this service, and the
+     * held-key repeats don't make it back. So the first press passes through as usual, and while the key stays down
+     * the steps come from here, the way the system takes a volume key (on a box, that goes on to the TV over HDMI).
      */
-    private boolean tvPanel;
     private int volumeDir;
     private int volumeSteps;
     private final Runnable volumeStep = new Runnable() {
@@ -132,7 +130,7 @@ public class XeleoService extends AccessibilityService {
             if (volumeDir == 0 || ++volumeSteps > 100) return;
             android.media.AudioManager audio = getSystemService(android.media.AudioManager.class);
             if (audio != null) {
-                audio.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, volumeDir,
+                audio.adjustSuggestedStreamVolume(volumeDir, android.media.AudioManager.USE_DEFAULT_STREAM_TYPE,
                         android.media.AudioManager.FLAG_SHOW_UI);
             }
             handler.postDelayed(this, 110);
@@ -177,7 +175,7 @@ public class XeleoService extends AccessibilityService {
                 return true;
             }
         }
-        if (tvPanel && (key == KeyEvent.KEYCODE_VOLUME_UP || key == KeyEvent.KEYCODE_VOLUME_DOWN)) return volume(event);
+        if (key == KeyEvent.KEYCODE_VOLUME_UP || key == KeyEvent.KEYCODE_VOLUME_DOWN) return volume(event);
         if (key == KeyEvent.KEYCODE_SETTINGS || key == KeyEvent.KEYCODE_NOTIFICATION || key == TCL_SETTINGS) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) HomeActivity.openQuickSettings(this);
             return true;
